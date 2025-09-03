@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>EUREKA - GitOps/DevSecOps Java CI/CD Pipeline</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- External CSS Libraries -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-md navbar-dark fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="#"><i class="fas fa-rocket mr-2"></i>DevSecOps CI/CD Pipeline</a>
+  </div>
+</nav>
+
+<!-- Intro Section -->
+<main class="container">
+  <div class="starter-template">
+    <h1><strong>✨ EUREKA...!!</strong></h1>
+    <h3>A Complete CI/CD Pipeline Portraying: GitOps / DevSecOps Workflow</h3>
+    <p>
+      Automate everything — from code commit to secure production deployment.<br />
+      Integrate <strong>build, test, scan, and deploy</strong> stages with full traceability and speed.
+    </p>
+    <div class="mt-4">
+      <a href="#tools" class="btn btn-primary px-4 py-2 mr-2">Explore Tools</a>
+      <a href="https://github.com/Orion83-h/Safari" target="_blank" class="btn btn-outline-primary px-4 py-2">
+        <i class="fab fa-github mr-2"></i>View on GitHub
+      </a>
+    </div>
+  </div>
+
+  <!-- Tools Section -->
+  <section id="tools" class="tool-section">
+    <h2 class="section-title">DevSecOps Toolchain</h2>
+    <div class="row">
+
+      <!-- Terraform -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Terraform_Logo.svg/512px-Terraform_Logo.svg.png" alt="Terraform Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Terraform</div>
+          <div class="tool-desc">Infrastructure as Code for automating cloud provisioning.</div>
+          <a href="https://www.terraform.io/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- Git -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Git-logo.svg/512px-Git-logo.svg.png" alt="Git Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Git</div>
+          <div class="tool-desc">Distributed version control for source code management.</div>
+          <a href="https://git-scm.com/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- GitHub -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">GitHub</div>
+          <div class="tool-desc">Code hosting with Git, integrated CI/CD and collaboration.</div>
+          <a href="https://github.com/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- Jenkins -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Jenkins_logo.svg/512px-Jenkins_logo.svg.png" alt="Jenkins Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Jenkins</div>
+          <div class="tool-desc">Automated build, test and deployment pipelines.</div>
+          <a href="https://www.jenkins.io/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- Maven -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Apache_Maven_logo.svg/512px-Apache_Maven_logo.svg.png" alt="Maven Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Maven</div>
+          <div class="tool-desc">Java build automation and dependency management tool.</div>
+          <a href="https://maven.apache.org/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      
+      <!-- Nexus Repository -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://cdn.icon-icons.com/icons2/2699/PNG/512/sonatype_nexus_logo_icon_167750.png" alt="Nexus Repository Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Nexus Repository</div>
+          <div class="tool-desc">Artifact repository manager for storing and distributing build artifacts.</div>
+          <a href="https://www.sonatype.com/products/nexus-repository" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- SonarCloud -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://cdn.worldvectorlogo.com/logos/sonarcloud-1.svg" alt="SonarCloud Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">SonarCloud</div>
+          <div class="tool-desc">Static code analysis for quality, bugs, and vulnerabilities.</div>
+          <a href="https://sonarcloud.io/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- Docker -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Docker_%28container_engine%29_logo.svg/512px-Docker_%28container_engine%29_logo.svg.png" alt="Docker Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Docker</div>
+          <div class="tool-desc">Containerization platform for packaging applications.</div>
+          <a href="https://www.docker.com/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- Kubernetes -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Kubernetes_logo_without_workmark.svg/1200px-Kubernetes_logo_without_workmark.svg.png" alt="Kubernetes Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Kubernetes</div>
+          <div class="tool-desc">Container orchestration platform for automating deployment and scaling.</div>
+          <a href="https://kubernetes.io/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      
+      <!-- ArgoCD -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://argo-cd.readthedocs.io/en/stable/assets/logo.png" alt="ArgoCD Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">ArgoCD</div>
+          <div class="tool-desc">GitOps deployment controller for Kubernetes.</div>
+          <a href="https://argo-cd.readthedocs.io/en/stable/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- Bash -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Bash_Logo_Colored.svg/512px-Bash_Logo_Colored.svg.png" alt="Bash Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Bash</div>
+          <div class="tool-desc">Shell scripting for automation in pipelines and systems.</div>
+          <a href="https://www.gnu.org/software/bash/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- Gmail -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Gmail_icon_%282020%29.svg/512px-Gmail_icon_%282020%29.svg.png" alt="Gmail Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Gmail</div>
+          <div class="tool-desc">Email notifications for pipeline status and alerts.</div>
+          <a href="https://www.google.com/gmail/about/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- OWASP -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://owasp.org/assets/images/logo.svg" alt="OWASP Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">OWASP</div>
+          <div class="tool-desc">Open source project driving secure coding practices and tools.</div>
+          <a href="https://owasp.org/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      
+      <!-- GitLeaks -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://raw.githubusercontent.com/zricethezav/gifs/master/gitleakslogo.png" alt="GitLeaks Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">GitLeaks</div>
+          <div class="tool-desc">Secret scanning tool for detecting hardcoded secrets in git repositories.</div>
+          <a href="https://github.com/zricethezav/gitleaks" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+      <!-- Trivy -->
+      <div class="col-md-4 col-sm-6">
+        <div class="tool-card">
+          <div class="logo-container">
+            <img src="https://avatars.githubusercontent.com/u/43526139?s=200&v=4" alt="Trivy Logo" class="tool-logo">
+          </div>
+          <div class="tool-name">Trivy (Aqua Security)</div>
+          <div class="tool-desc">Vulnerability scanner for containers, code, and cloud configs.</div>
+          <a href="https://aquasecurity.github.io/trivy/" target="_blank" class="tool-link">Learn more <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <p>&copy; 2025 EUREKA DevSecOps Pipeline | Built with <i class="fas fa-heart"></i> for secure deployments</p>
+    <div class="mt-2">
+      <p class="mb-2">Created by <strong>Samuel.E.Haddison</strong></p>
+    </div>
+    <div class="mt-2">
+      <a href="https://www.linkedin.com/in/samuel-haddison-7a299410b/" target="_blank" class="text-white">
+        <i class="fab fa-linkedin"></i> Connect on LinkedIn
+      </a>
+    </div>
+  </div>
+</footer>
+
+<!-- JavaScript Libraries -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

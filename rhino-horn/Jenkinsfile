@@ -1,0 +1,485 @@
+pipeline {
+
+    agent any
+
+    tools {
+        maven 'maven-3.9.11'
+    }
+
+    parameters {
+        string(name: 'BUILD_NUM_TO_KEEP', defaultValue: '2', description: 'Number of builds to retain (-1 means keep all).')
+        string(name: 'BUILD_DAYS_TO_KEEP', defaultValue: '7', description: 'Discard builds older than specified days.')
+        string(name: 'BUILD_ARTIFACT_NUM_TO_KEEP', defaultValue: '2', description: 'Number of build artifacts to retain (-1 means keep all).')
+        string(name: 'BUILD_ARTIFACT_DAYS_TO_KEEP', defaultValue: '2', description: 'Discard build artifacts older than specified days.')
+        string(name: 'CONTAINER_PORT', defaultValue: '8084', description: 'Port to expose within the container.')
+        choice(name: 'BRANCH_NAME', choices: ['main', 'dev', 'staging'], description: 'Git branch to build.')
+        choice(name: 'MAIL_TO', choices: ['samuelhaddison@gmail.com', 'orionhouse83@gmail.com'], description: 'Email recipients')
+        choice(name: 'PROJECT_VERSION', choices: ['1.0', '1.1', '1.2'], description: 'Version of the project to build.')
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Environment to deploy to.')
+        choice(name: 'TRIVY_SEVERITY', choices: ['HIGH', 'CRITICAL'], description: 'Severity level for vulnerability scan.')
+        string(name: 'HOST_PORT', defaultValue: '8084', description: 'Host port for smoke testing.')
+        booleanParam(name: 'FAIL_ON_LEAKS', defaultValue: true, description: 'Fail the build if secrets are found in the source code.')
+    }
+
+    options {
+        buildDiscarder(logRotator(
+            numToKeepStr: params.BUILD_NUM_TO_KEEP,
+            daysToKeepStr: params.BUILD_DAYS_TO_KEEP,
+            artifactNumToKeepStr: params.BUILD_ARTIFACT_NUM_TO_KEEP,
+            artifactDaysToKeepStr: params.BUILD_ARTIFACT_DAYS_TO_KEEP
+        ))
+        quietPeriod(30)
+        timestamps()
+    }
+
+    environment {
+        // Define global environment variables
+        // These variables are used throughout the pipeline for consistency and ease of maintenance
+        GIT_URL            = 'https://github.com/Orion83-h/Safari.git'
+        DOCKERFILE         = 'rhino-horn/Dockerfile'
+        DOCKER_NAMESPACE   = 'colanta06'
+        MAJOR_VERSION      = "1"
+        MINOR_VERSION      = "0"
+        PATCH_VERSION      = "${env.BUILD_NUMBER}"
+        IMAGE_TAG         = "v${MAJOR_VERSION}.${MINOR_VERSION}.${env.PATCH_VERSION}"
+        IMAGE_NAME        = "${DOCKER_NAMESPACE}/${env.JOB_NAME}:${env.IMAGE_TAG}"
+        CONTAINER_NAME    = "rhino-horn-${params.ENVIRONMENT}"
+        SONAR_ORG         = 'safari'
+        SONAR_PROJECT_KEY = 'safari_rhino-horn'
+        SONARQUBE_URL     = 'https://sonarcloud.io'
+        TRIVY_CACHE_DIR   = '/tmp/trivy'
+        TRIVY_SCAN_STATUS = '0'
+        S3_BUCKET_NAME    = "trivy-reports-4kbapupi"
+    }
+
+    stages {
+        stage('Pull Src Code') {
+            steps {
+                // Pulls the source code from the specified Git repository
+                // The branch name is specified by the user as a parameter
+                // The depth of the Git clone is set to 1 to speed up the build proces (latest commit only)
+                echo "====++++Pulling Source Code From Repo++++===="
+                checkout([$class: 'GitSCM',
+                    branches: [[name: "*/${params.BRANCH_NAME}"]],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [
+                        [$class: 'PruneStaleBranch'],
+                        [$class: 'CleanBeforeCheckout'],
+                        [$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true] // depth could be increased for larger repos
+                    ],
+                    userRemoteConfigs: [[credentialsId: env.GIT_CREDS, url: env.GIT_URL]]
+                ])
+            }
+        }
+
+        stage('Secrets Scan (Gitleaks)') {
+            steps {
+                script {
+                    // GitLeaks is a tool for detecting secrets leaked into source code repositories
+                    // The scan is performed on the source code directory (rhino-horn)
+                    echo "====++++Running Gitleaks for Secrets Scanning++++===="
+                    sh """
+                        mkdir -p gitleaks-reports
+                        gitleaks detect --source rhino-horn \
+                         --report-format sarif \
+                         --report-path gitleaks-reports/gitleaks-report.sarif
+                    """
+                    archiveArtifacts artifacts: 'gitleaks-reports/**', fingerprint: true
+
+                    def result = sh(script: "gitleaks detect --source rhino-horn --exit-code 1", returnStatus: true)
+                    if (result != 0 && params.FAIL_ON_LEAKS) {
+                        error("Secrets detected by Gitleaks!!")
+                        echo "Failing the build! Secrets detected in source code."
+                    } else {
+                        echo "No secrets detected by Gitleaks."
+                    }
+                }
+            }
+        }
+
+        stage('Build Maven Project') {
+            steps {
+                echo "====++++Building Maven Project++++===="
+                dir('rhino-horn') {
+                    sh 'mvn clean package -DskipTests'
+                    sh 'ls -lrt target/'
+                }
+            }
+        }
+
+        stage('Deploy To Nexus') {
+            steps {
+                echo "====++++Deploying To Nexus++++===="
+                dir('rhino-horn') {
+                    withMaven(globalMavenSettingsConfig: 'settings', jdk: '', maven: 'maven-3.9.11', mavenSettingsConfig: '', traceability: true) {
+                        sh 'mvn deploy'
+                    }
+                }
+            }
+        }
+
+        stage('Code Quality Analysis') {
+            failFast true
+            parallel {
+                stage('SonarCloud Analysis') {
+                    steps {
+                        echo "====++++SonarCloud Code Quality++++===="
+                        withSonarQubeEnv('SonarCloud') {
+                            script {
+                                def SCANNER_HOME = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+                                try {
+                                    sh """
+                                        ${SCANNER_HOME}/bin/sonar-scanner \
+                                        -Dsonar.organization=$SONAR_ORG \
+                                        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                                        -Dsonar.projectVersion=${params.PROJECT_VERSION} \
+                                        -Dsonar.java.binaries=rhino-horn/target
+                                    """
+                                } catch (Exception e) {
+                                    error "Unexpected error during SonarCloud analysis: ${e.getMessage()}"
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                stage('SonarCloud Quality Gate') {
+                    steps {
+                        echo "====++++SonarCloud Quality Gate++++===="
+                        dir('rhino-horn') {
+                            script {
+                                try {
+                                    withSonarQubeEnv('SonarCloud') {
+                                        sh """
+                                            mvn sonar:sonar \
+                                            -Dsonar.host.url=${env.SONARQUBE_URL} \
+                                            -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} \
+                                            -Dsonar.projectName=${env.JOB_NAME} \
+                                            -Dsonar.projectVersion=${params.PROJECT_VERSION} \
+                                            -Dsonar.qualitygate.wait=true
+                                        """
+                                    }
+                                    echo "SonarQube Quality Gate passed successfully"
+                                } catch (Exception e) {
+                                    unstable "SonarQube Quality Gate failed: ${e.getMessage()}"
+                                    echo "Pipeline marked as unstable due to SonarQube Quality Gate failure"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Docker Operations') {
+            failFast true
+            // The Docker operations are performed in parallel to speed up the build process
+            parallel {
+                stage('Check Dockerfile') {
+                    // Checks if a Dockerfile exists at the specified path
+                    // If the Dockerfile does not exist, the build will fail
+                    // The path to the Dockerfile is specified in the environment variables block
+                    // The Dockerfile in this case is located in the projects root directory
+                    steps {
+                        echo "====++++Checking Dockerfile++++===="
+                        script {
+                            if (!fileExists(env.DOCKERFILE)) {
+                                error "Dockerfile does not exist at path: ${env.DOCKERFILE}"
+                            }
+                            echo "Dockerfile exists at path: ${env.DOCKERFILE}"
+
+                            sh """
+                                chmod +x rhino-horn/dockerfile-check.sh
+                                ./rhino-horn/dockerfile-check.sh
+                                echo "Dockerfile USER validation completed."
+                            """
+                        }
+                    }
+                }
+                stage('Build Docker Image') {
+                    // Builds a Docker image using the Dockerfile
+                    // The image is tagged with the specified name and version
+                    // The image is built with the `--no-cache` and `--pull` flags to ensure the latest dependencies are used
+                    when {
+                        expression { fileExists(env.DOCKERFILE) }
+                    }
+                    steps {
+                        echo "====++++Building Docker Image++++===="
+                        script {
+                            def gitCommit = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+                            sh """
+                                docker build \
+                                --no-cache \
+                                --pull \
+                                --build-arg GIT_COMMIT=${gitCommit} \
+                                -t ${env.IMAGE_NAME} \
+                                -f ${env.DOCKERFILE} .
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Trivy Scan') {
+            steps {
+                echo "====++++ Scanning Docker Image with Trivy ++++===="
+                script {
+                    // Define directories and file paths
+                    def reportDir = "trivy-reports"
+
+                    // Create necessary directories
+                    echo "=====+++++Setting up directories for Trivy scan++++====="
+                    sh "mkdir -p ${reportDir} ${env.TRIVY_CACHE_DIR}"
+
+                    // Check Trivy version
+                    echo "====++++ Displaying Trivy version ++++===="
+                    sh "trivy --version"
+
+                    // Download Trivy database with retries in case of failure
+                    echo "====++++ Downloading Trivy vulnerability database ++++===="
+                    retry(3) {
+                        sh """
+                            set -e
+                            trivy image --download-db-only
+                        """
+                    }
+
+                    // Ensure the Trivy HTML template exists
+                    sh """
+                        if [ ! -f contrib/html.tpl ]; then
+                            mkdir -p contrib
+                            wget -O contrib/html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+                        fi
+                    """
+
+                    // Run Trivy scan
+                    try {
+                        echo "====++++ Running Trivy scan on Docker image ++++===="
+                        // Authenticate and perform the scan
+                        withCredentials([
+                            usernamePassword(
+                                credentialsId: 'gitAuth', // Replace with your GitHub credentials ID as stored in Jenkins
+                                usernameVariable: 'GHCR_USERNAME', // Could use hashicorp vault or other secret management tools
+                                passwordVariable: 'GHCR_TOKEN'
+                            )
+                        ]) {
+                            env.TRIVY_SCAN_STATUS = sh(
+                                script: """
+                                    set -e
+                                    trivy image \
+                                        --exit-code 1 \
+                                        --cache-dir ${env.TRIVY_CACHE_DIR} \
+                                        --severity ${params.TRIVY_SEVERITY} \
+                                        --no-progress \
+                                        --format table \
+                                        --output ${reportDir}/trivy-report.html \
+                                        ${env.IMAGE_NAME}
+                                """,
+                                returnStatus: true
+                            ).toString()
+                        }
+
+                        // Consolidated logic to handle the report
+                        if (fileExists("${reportDir}/trivy-report.html")) {
+                            archiveArtifacts artifacts: "${reportDir}/trivy-report.html", fingerprint: true
+                            echo "Trivy report found and archived successfully."
+                        } else {
+                            error "Trivy report not generated at ${reportDir}/trivy-report.html. Failing the build."
+                        }
+                        // Analyze the scan results based on the exit code
+                        if (env.TRIVY_SCAN_STATUS.toInteger() == 0) {
+                            echo "No vulnerabilities found with severity ${params.TRIVY_SEVERITY}."
+                        } else if (env.TRIVY_SCAN_STATUS.toInteger() == 1) {
+                            error "Trivy scan found vulnerabilities or encountered issues. Exit code: ${env.TRIVY_SCAN_STATUS}"
+                        }
+                    } catch (Exception e) {
+                        unstable "Trivy scan encountered an error: ${e.getMessage()}"
+                        echo "Pipeline marked as unstable due to Trivy scan issues."
+                    }
+                }
+            }
+        }
+
+        stage('Upload Trivy Report to S3') {
+            // Uploads the Trivy report to S3 bucket for further analysis
+            // The report is uploaded only if it exists and is not empty
+            steps {
+                echo "====++++ Uploading Trivy Report to S3 ++++===="
+                script {
+                    def s3Bucket = env.S3_BUCKET_NAME.replaceAll('s3://', '')
+                    def s3Key = "trivy-reports/trivy-report.html"
+                    def s3Url = "s3://${s3Bucket}/${s3Key}"
+
+                    def reportPath = "trivy-reports/trivy-report.html"
+                    def reportSize = fileExists(reportPath) ? sh(script: "wc -c < ${reportPath}", returnStdout: true).trim().toInteger() : 0
+
+                    if (reportSize > 0) {
+                        try {
+                            sh "aws s3 cp ${reportPath} ${s3Url}"
+                            echo "Trivy report uploaded successfully to S3: ${s3Url}"
+                        } catch (Exception e) {
+                            error("Failed to upload Trivy report to S3: ${s3Url}. Error: ${e.getMessage()}")
+                        }
+                    } else {
+                        echo "Trivy report not found or empty; skipping upload."
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            when {
+                expression {
+                    return (env.TRIVY_SCAN_STATUS ?: '0').toInteger() == 0
+                }
+            }
+            steps {
+                // Docker image push is triggered based on the (Trivy scan) result. If the scan is successful, the image is pushed to the registry
+                echo "====++++Pushing Docker Image to Registry++++===="
+                script {
+                    def dockerRegistryUrl = 'https://index.docker.io/v1/' // Here we're using Docker Hub as Image Registry
+                    withDockerRegistry([credentialsId: 'dockerCreds', url: dockerRegistryUrl]) {
+                        retry(3) {
+                            sh "docker push ${env.IMAGE_NAME}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Smoke Test') {
+            // It is recommended to have a smoke test to verify the application is running as expected
+            // Here we are running a simple shell script to check the application status. The script is located in the project root
+            when {
+                expression {
+                    return (env.TRIVY_SCAN_STATUS ?: '1').toInteger() == 0
+                }
+            }
+
+            steps {
+                echo "====++++Executing Smoke Test++++===="
+                script {
+                    def hostPort = params.HOST_PORT.toInteger()
+                    try {
+                        sh """
+                            docker run --name ${env.CONTAINER_NAME} \
+                                -d \
+                                -p ${hostPort}:${params.CONTAINER_PORT} \
+                                ${env.IMAGE_NAME}
+                        """
+                        sh "chmod +x ${WORKSPACE}/rhino-horn/test-run.sh"
+                        sh """
+                            sleep 30
+                            APP_PORT=${hostPort} ${WORKSPACE}/rhino-horn/test-run.sh
+                        """
+                    } catch (Exception e) {
+                        error("Smoke test failed: ${e.getMessage()}")
+                    }
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                // The Docker container and image are stopped and removed after the build is complete
+                // This is to ensure that the environment is clean and ready for the next build
+                echo "====++++Cleaning up++++===="
+                script {
+                    try {
+                        sh "docker stop ${env.CONTAINER_NAME} 2>&1 > /dev/null || echo 'Container ${env.CONTAINER_NAME} not found.'"
+                        sh "docker rm -f ${env.CONTAINER_NAME} 2>&1 > /dev/null || echo 'Container ${env.CONTAINER_NAME} not found.'"
+                        sh "docker rmi -f ${env.IMAGE_NAME} 2>&1 > /dev/null || echo 'Image ${env.IMAGE_NAME} not found.'"
+                        sh "docker ps -a"
+                    } catch (Exception e) {
+                        echo "Cleanup failed: ${e.getMessage()}"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+    success {
+        script {
+            def reportUrl = "${env.BUILD_URL}artifact/trivy-reports/trivy-report.html"
+            def sonarCloudUrl = "https://sonarcloud.io/dashboard?id=${env.SONAR_PROJECT_KEY}"
+            def sonarQubeUrl = "${env.SONARQUBE_URL}/dashboard?id=${env.SONAR_PROJECT_KEY}"
+            
+            // Only send emails for main branch or production deployments
+            if (params.BRANCH_NAME == 'main' || params.ENVIRONMENT == 'prod') {
+                emailext (
+                    to: "${params.MAIL_TO}",
+                    cc: "${params.ENVIRONMENT == 'prod' ? 'devops-team@example.com' : ''}",
+                    subject: "[${params.ENVIRONMENT}] SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                    body: """
+                        <h2>Build Succeeded</h2>
+                        <table>
+                            <tr><td><b>Project:</b></td><td>${env.JOB_NAME}</td></tr>
+                            <tr><td><b>Build:</b></td><td>#${env.BUILD_NUMBER}</td></tr>
+                            <tr><td><b>Branch:</b></td><td>${params.BRANCH_NAME}</td></tr>
+                            <tr><td><b>Environment:</b></td><td>${params.ENVIRONMENT}</td></tr>
+                            <tr><td><b>Version:</b></td><td>${params.PROJECT_VERSION}-${env.IMAGE_TAG}</td></tr>
+                            <tr><td><b>Image:</b></td><td>${env.IMAGE_NAME}</td></tr>
+                            <tr><td><b>Security:</b></td><td>${env.TRIVY_SCAN_STATUS == '0' ? 'No vulnerabilities' : 'Issues found'}</td></tr>
+                        </table>
+                        <h3>Links</h3>
+                        <ul>
+                            <li><a href="${env.BUILD_URL}">Build Details</a></li>
+                            <li><a href="${reportUrl}">Security Report</a></li>
+                            <li><a href="${sonarCloudUrl}">SonarCloud Analysis</a></li>
+                            <li><a href="${sonarQubeUrl}">SonarQube Quality Gate</a></li>
+                        </ul>
+                    """,
+                    mimeType: 'text/html',
+                    attachmentsPattern: 'trivy-reports/**'
+                )
+            }
+        }
+    }
+    failure {
+        script {
+            def reportUrl = "${env.BUILD_URL}artifact/trivy-reports/trivy-report.html"
+            def sonarCloudUrl = "https://sonarcloud.io/dashboard?id=${env.SONAR_PROJECT_KEY}"
+            def sonarQubeUrl = "${env.SONARQUBE_URL}/dashboard?id=${env.SONAR_PROJECT_KEY}"
+            def failedStage = currentBuild.result ?: "Unknown"
+            
+            // Always send failure emails
+            emailext (
+                to: "${params.MAIL_TO}",
+                cc: "devops-team@example.com",
+                subject: "[${params.ENVIRONMENT}] FAILED: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Build Failed</h2>
+                    <table>
+                        <tr><td><b>Project:</b></td><td>${env.JOB_NAME}</td></tr>
+                        <tr><td><b>Build:</b></td><td>#${env.BUILD_NUMBER}</td></tr>
+                        <tr><td><b>Branch:</b></td><td>${params.BRANCH_NAME}</td></tr>
+                        <tr><td><b>Environment:</b></td><td>${params.ENVIRONMENT}</td></tr>
+                        <tr><td><b>Failed Stage:</b></td><td style="color:red">${failedStage}</td></tr>
+                        <tr><td><b>Security:</b></td><td>${env.TRIVY_SCAN_STATUS == '0' ? 'No vulnerabilities' : 'Issues found'}</td></tr>
+                    </table>
+                    <h3>Links</h3>
+                    <ul>
+                        <li><a href="${env.BUILD_URL}">Build Details</a></li>
+                        <li><a href="${env.BUILD_URL}console">Console Output</a></li>
+                        <li><a href="${reportUrl}">Security Report</a></li>
+                        <li><a href="${sonarCloudUrl}">SonarCloud Analysis</a></li>
+                        <li><a href="${sonarQubeUrl}">SonarQube Quality Gate</a></li>
+                    </ul>
+                """,
+                mimeType: 'text/html',
+                attachmentsPattern: 'trivy-reports/**'
+            )
+        }
+    }
+    always {
+        cleanWs(
+            cleanWhenNotBuilt: false,
+            deleteDirs: true,
+            disableDeferredWipeout: true,
+            notFailBuild: true
+        )
+    }
+  }
+}
