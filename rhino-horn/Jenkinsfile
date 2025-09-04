@@ -109,10 +109,22 @@ pipeline {
 
         stage('Deploy To Nexus') {
             steps {
-                echo "====++++Deploying To Nexus++++===="
+                echo "====++++ Deploying To Nexus ++++===="
                 dir('rhino-horn') {
-                    withMaven(globalMavenSettingsConfig: 'settings', jdk: '', maven: 'maven-3.9.11', mavenSettingsConfig: '', traceability: true) {
-                        sh 'mvn deploy'
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'nexus-cred-id',
+                            usernameVariable: 'NEXUS_USERNAME',
+                            passwordVariable: 'NEXUS_PASSWORD'
+                        )
+                    ]) {
+                        withMaven(
+                            globalMavenSettingsConfig: 'settings', // Jenkins global settings.xml
+                            maven: 'maven-3.9.11',
+                            traceability: true
+                        ) {
+                            sh 'mvn clean deploy -DskipTests'
+                        }
                     }
                 }
             }
