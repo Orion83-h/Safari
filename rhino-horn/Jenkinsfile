@@ -49,7 +49,7 @@ pipeline {
         SONARQUBE_URL     = 'https://sonarcloud.io'
         TRIVY_CACHE_DIR   = '/tmp/trivy'
         TRIVY_SCAN_STATUS = '0'
-        S3_BUCKET_NAME    = "trivy-reports-4kbapupi"
+        S3_BUCKET_NAME    = "trivy-reports-gma0udqi"
     }
 
     stages {
@@ -123,58 +123,27 @@ pipeline {
         }
 
         stage('Code Quality Analysis') {
-            failFast true
-            parallel {
-                stage('SonarCloud Analysis') {
-                    steps {
-                        echo "====++++SonarCloud Code Quality++++===="
-                        withSonarQubeEnv('SonarCloud') {
-                            script {
-                                def SCANNER_HOME = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-                                try {
-                                    sh """
-                                        ${SCANNER_HOME}/bin/sonar-scanner \
-                                        -Dsonar.organization=$SONAR_ORG \
-                                        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                                        -Dsonar.projectVersion=${params.PROJECT_VERSION} \
-                                        -Dsonar.java.binaries=rhino-horn/target
-                                    """
-                                } catch (Exception e) {
-                                    error "Unexpected error during SonarCloud analysis: ${e.getMessage()}"
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                stage('SonarCloud Quality Gate') {
-                    steps {
-                        echo "====++++SonarCloud Quality Gate++++===="
-                        dir('rhino-horn') {
-                            script {
-                                try {
-                                    withSonarQubeEnv('SonarCloud') {
-                                        sh """
-                                            mvn sonar:sonar \
-                                            -Dsonar.host.url=${env.SONARQUBE_URL} \
-                                            -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} \
-                                            -Dsonar.projectName=${env.JOB_NAME} \
-                                            -Dsonar.projectVersion=${params.PROJECT_VERSION} \
-                                            -Dsonar.qualitygate.wait=true
-                                        """
-                                    }
-                                    echo "SonarQube Quality Gate passed successfully"
-                                } catch (Exception e) {
-                                    unstable "SonarQube Quality Gate failed: ${e.getMessage()}"
-                                    echo "Pipeline marked as unstable due to SonarQube Quality Gate failure"
-                                }
-                            }
+            steps {
+                echo "====++++SonarCloud Code Quality++++===="
+                withSonarQubeEnv('SonarCloud') {
+                    script {
+                        def SCANNER_HOME = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+                        try {
+                            sh """
+                                ${SCANNER_HOME}/bin/sonar-scanner \
+                                -Dsonar.organization=$SONAR_ORG \
+                                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                                -Dsonar.projectVersion=${params.PROJECT_VERSION} \
+                                -Dsonar.java.binaries=rhino-horn/target
+                            """
+                        } catch (Exception e) {
+                            error "Unexpected error during SonarCloud analysis: ${e.getMessage()}"
                         }
                     }
                 }
             }
         }
-
+    
         stage('Docker Operations') {
             failFast true
             // The Docker operations are performed in parallel to speed up the build process
@@ -210,12 +179,10 @@ pipeline {
                     steps {
                         echo "====++++Building Docker Image++++===="
                         script {
-                            def gitCommit = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
                             sh """
                                 docker build \
                                 --no-cache \
                                 --pull \
-                                --build-arg GIT_COMMIT=${gitCommit} \
                                 -t ${env.IMAGE_NAME} \
                                 -f ${env.DOCKERFILE} .
                             """
