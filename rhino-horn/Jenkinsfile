@@ -19,6 +19,7 @@ pipeline {
         choice(name: 'TRIVY_SEVERITY', choices: ['HIGH', 'CRITICAL'], description: 'Severity level for vulnerability scan.')
         string(name: 'HOST_PORT', defaultValue: '8084', description: 'Host port for smoke testing.')
         booleanParam(name: 'FAIL_ON_LEAKS', defaultValue: true, description: 'Fail the build if secrets are found in the source code.')
+        string(name: 'GIT_CREDENTIALS_ID', defaultValue: 'github-personal-access-token', description: 'Jenkins credentials ID for Git access')
     }
 
     options {
@@ -37,86 +38,90 @@ pipeline {
         // These variables are used throughout the pipeline for consistency and ease of maintenance
         GIT_URL            = 'https://github.com/Orion83-h/Safari.git'
         DOCKERFILE         = 'rhino-horn/Dockerfile'
+        APP_DIR             = 'rhino-horn'
         DOCKER_NAMESPACE   = 'colanta06'
         MAJOR_VERSION      = "1"
         MINOR_VERSION      = "0"
         PATCH_VERSION      = "${env.BUILD_NUMBER}"
         IMAGE_TAG         = "v${MAJOR_VERSION}.${MINOR_VERSION}.${env.PATCH_VERSION}"
         IMAGE_NAME        = "${DOCKER_NAMESPACE}/${env.JOB_NAME}:${env.IMAGE_TAG}"
-        CONTAINER_NAME    = "rhino-horn-${params.ENVIRONMENT}"
+        CONTAINER_NAME    = "rhino-horn-${params.ENVIRONMENT}-${env.BUILD_ID}"
         SONAR_ORG         = 'safari'
         SONAR_PROJECT_KEY = 'safari_rhino-horn'
         SONARQUBE_URL     = 'https://sonarcloud.io'
-        TRIVY_CACHE_DIR   = '/tmp/trivy'
+        TRIVY_CACHE_DIR   = "${env.WORKSPACE}/trivy-cache"
         TRIVY_SCAN_STATUS = '0'
         S3_BUCKET_NAME    = "trivy-reports-gma0udqi"
+        REPORT_DIR          = 'security-reports'
     }
 
     stages {
         stage('Pull Src Code') {
             steps {
-                // Pulls the source code from the specified Git repository
-                // The branch name is specified by the user as a parameter
-                // The depth of the Git clone is set to 1 to speed up the build proces (latest commit only)
-                echo "====++++Pulling Source Code From Repo++++===="
+                echo "====++++ Pulling Source Code From ${params.BRANCH_NAME} ++++===="
                 checkout([$class: 'GitSCM',
                     branches: [[name: "*/${params.BRANCH_NAME}"]],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [
                         [$class: 'PruneStaleBranch'],
                         [$class: 'CleanBeforeCheckout'],
-                        [$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true] // depth could be increased for larger repos
+                        [$class: 'CloneOption', depth: 1, shallow: true]
                     ],
-                    userRemoteConfigs: [[credentialsId: env.GIT_CREDS, url: env.GIT_URL]]
+                    userRemoteConfigs: [[
+                        credentialsId: params.GIT_CREDENTIALS_ID,
+                        url: env.GIT_URL
+                    ]]
                 ])
             }
         }
 
         stage('Secrets Scan (Gitleaks)') {
             steps {
-                script {
                     // GitLeaks is a tool for detecting secrets leaked into source code repositories
                     // The scan is performed on the source code directory (rhino-horn)
-                    echo "====++++Running Gitleaks for Secrets Scanning++++===="
-                    sh """
-                        mkdir -p gitleaks-reports
-                        gitleaks detect --source rhino-horn \
-                         --report-format sarif \
-                         --report-path gitleaks-reports/gitleaks-report.sarif
-                    """
-                    archiveArtifacts artifacts: 'gitleaks-reports/**', fingerprint: true
+                       echo "====++++ Scanning Source Code for Secrets with Gitleaks ++++===="
+                    dir(env.APP_DIR) {
+                            sh """
+                                mkdir -p ../${env.REPORT_DIR}/gitleaks
+                                gitleaks detect --source . \
+                                --report-format sarif \
+                                --report-path ../${env.REPORT_DIR}/gitleaks/gitleaks.sarif --verbose
+                            """
+                            archiveArtifacts artifacts: "${env.REPORT_DIR}/gitleaks/**", allowEmptyArchive: true
 
-                    def result = sh(script: "gitleaks detect --source rhino-horn --exit-code 1", returnStatus: true)
-                    if (result != 0 && params.FAIL_ON_LEAKS) {
-                        error("Secrets detected by Gitleaks!!")
-                        echo "Failing the build! Secrets detected in source code."
-                    } else {
-                        echo "No secrets detected by Gitleaks."
+                            def result = sh(script: "gitleaks detect --source . --exit-code 1", returnStatus: true)
+                            if (result != 0 && params.FAIL_ON_LEAKS) {
+                                error("Secrets detected by Gitleaks!!")
+                                echo "Failing the build! Secrets detected in source code."
+                            } else {
+                                echo "Gitleaks scan passed – no secrets found"
+                            }
+                        }
                     }
-                }
             }
         }
 
         stage('Build Maven Project') {
             steps {
-                echo "====++++Building Maven Project++++===="
-                dir('rhino-horn') {
+                   echo "====++++ Building Maven Project ++++===="
+                dir(env.APP_DIR) {
+
                     sh 'mvn clean package -DskipTests'
-                    sh 'ls -lrt target/'
-                }
+                    sh 'ls -lrt target/' 
+               }
             }
         }
 
         stage('Deploy To Nexus') {
             steps {
-                echo "====++++ Deploying To Nexus ++++===="
-                dir('rhino-horn') {
-                        withMaven(
-                            globalMavenSettingsConfig: 'settings', // Jenkins global settings.xml
+                    echo "====++++ Deploying To Nexus ++++===="
+                dir(env.APP_DIR) {
+                    withMaven(
+                        globalMavenSettingsConfig: 'settings', // Jenkins global settings.xml
                             maven: 'maven-3.9.11',
                             traceability: true
                         ) {
-                            sh 'mvn clean deploy -DskipTests'
+                        sh 'mvn clean deploy -DskipTests'
                     }
                 }
             }
@@ -124,20 +129,22 @@ pipeline {
 
         stage('Code Quality Analysis') {
             steps {
-                echo "====++++SonarCloud Code Quality++++===="
-                withSonarQubeEnv('SonarCloud') {
-                    script {
-                        def SCANNER_HOME = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-                        try {
-                            sh """
-                                ${SCANNER_HOME}/bin/sonar-scanner \
-                                -Dsonar.organization=$SONAR_ORG \
-                                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                                -Dsonar.projectVersion=${params.PROJECT_VERSION} \
-                                -Dsonar.java.binaries=rhino-horn/target
-                            """
-                        } catch (Exception e) {
-                            error "Unexpected error during SonarCloud analysis: ${e.getMessage()}"
+                   echo "====++++SonarCloud Code Quality++++===="
+                dir(env.APP_DIR) {
+                    withSonarQubeEnv('SonarCloud') {
+                        script {
+                            def SCANNER_HOME = tool name: 'SonarScanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+                            try {
+                                sh """
+                                    ${SCANNER_HOME}/bin/sonar-scanner \
+                                    -Dsonar.organization=$SONAR_ORG \
+                                    -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                                    -Dsonar.projectVersion=${params.PROJECT_VERSION} \
+                                    -Dsonar.java.binaries=rhino-horn/target
+                                """
+                            } catch (Exception e) {
+                                error "Unexpected error during SonarCloud analysis: ${e.getMessage()}"
+                            }
                         }
                     }
                 }
@@ -177,15 +184,17 @@ pipeline {
                         expression { fileExists(env.DOCKERFILE) }
                     }
                     steps {
-                        echo "====++++Building Docker Image++++===="
-                        script {
-                            sh """
-                                docker build \
-                                --no-cache \
-                                --pull \
-                                -t ${env.IMAGE_NAME} \
-                                -f ${env.DOCKERFILE} .
-                            """
+                           echo "====++++Building Docker Image++++===="
+                        dir(env.APP_DIR) {
+                            script {
+                                sh """
+                                    docker build \
+                                    --no-cache \
+                                    --pull \
+                                    -t ${env.IMAGE_NAME} \
+                                    -f ${env.DOCKERFILE} .
+                                """
+                            }
                         }
                     }
                 }
@@ -194,81 +203,84 @@ pipeline {
 
         stage('Trivy Scan') {
             steps {
-                echo "====++++ Scanning Docker Image with Trivy ++++===="
-                script {
-                    // Define directories and file paths
-                    def reportDir = "trivy-reports"
+                   echo "====++++ Scanning Docker Image with Trivy ++++===="
+                dir(env.APP_DIR) {
+                    script {
+                        // Define directories and file paths
+                        //def reportDir = "trivy-reports"
 
-                    // Create necessary directories
-                    echo "=====+++++Setting up directories for Trivy scan++++====="
-                    sh "mkdir -p ${reportDir} ${env.TRIVY_CACHE_DIR}"
+                        // Create necessary directories
+                        echo "=====+++++Setting up directories for Trivy scan++++====="
+                        // sh "mkdir -p ${reportDir} ${env.TRIVY_CACHE_DIR}"
+                        sh "mkdir -p ${env.REPORT_DIR}/trivy ${env.TRIVY_CACHE_DIR}" 
+            
+                        // Check Trivy version
+                        echo "====++++ Displaying Trivy version ++++===="
+                        sh "trivy --version"
 
-                    // Check Trivy version
-                    echo "====++++ Displaying Trivy version ++++===="
-                    sh "trivy --version"
+                        // Download Trivy database with retries in case of failure
+                        echo "====++++ Downloading Trivy vulnerability database ++++===="
+                        retry(3) {
+                            sh """
+                                set -e
+                                trivy image --download-db-only
+                            """
+                        }
 
-                    // Download Trivy database with retries in case of failure
-                    echo "====++++ Downloading Trivy vulnerability database ++++===="
-                    retry(3) {
+                        // Ensure the Trivy HTML template exists
                         sh """
-                            set -e
-                            trivy image --download-db-only
+                            if [ ! -f contrib/html.tpl ]; then
+                                mkdir -p contrib
+                                wget -O contrib/html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+                            fi
                         """
+
+                        // Run Trivy scan
+                        try {
+                            echo "====++++ Running Trivy scan on Docker image ++++===="
+                            // Authenticate and perform the scan
+                            withCredentials([
+                                usernamePassword(
+                                    credentialsId: 'gitAuth', // Replace with your GitHub credentials ID as stored in Jenkins
+                                    usernameVariable: 'GHCR_USERNAME', // Could use hashicorp vault or other secret management tools
+                                    passwordVariable: 'GHCR_TOKEN'
+                                )
+                            ]) {
+                                env.TRIVY_SCAN_STATUS = sh(
+                                    script: """
+                                        set -e
+                                        trivy image \
+                                            --exit-code 1 \
+                                            --cache-dir ${env.TRIVY_CACHE_DIR} \
+                                            --severity ${params.TRIVY_SEVERITY} \
+                                            --no-progress \
+                                            --format table \
+                                            --output ${env.REPORT_DIR}/trivy/trivy-report.html \
+                                            ${env.IMAGE_NAME}
+                                    """,
+                                    returnStatus: true
+                                ).toString()
+                            }
+
+                            // Consolidated logic to handle the report
+                            if (fileExists("${env.REPORT_DIR}/trivy/trivy-report.html")) {
+                                archiveArtifacts artifacts: "${env.REPORT_DIR}/trivy/trivy-report.html", fingerprint: true
+                                echo "Trivy report found and archived successfully."
+                            } else {
+                                error "Trivy report not generated at ${env.REPORT_DIR}/trivy/trivy-report.html. Failing the build."
+                            }
+                            // Analyze the scan results based on the exit code
+                            if (env.TRIVY_SCAN_STATUS.toInteger() == 0) {
+                                echo "No vulnerabilities found with severity ${params.TRIVY_SEVERITY}."
+                            } else if (env.TRIVY_SCAN_STATUS.toInteger() == 1) {
+                                error "Trivy scan found vulnerabilities or encountered issues. Exit code: ${env.TRIVY_SCAN_STATUS}"
+                            }
+                        } catch (Exception e) {
+                            unstable "Trivy scan encountered an error: ${e.getMessage()}"
+                            echo "Pipeline marked as unstable due to Trivy scan issues."
+                        }
                     }
-
-                    // Ensure the Trivy HTML template exists
-                    sh """
-                        if [ ! -f contrib/html.tpl ]; then
-                            mkdir -p contrib
-                            wget -O contrib/html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
-                        fi
-                    """
-
-                    // Run Trivy scan
-                    try {
-                        echo "====++++ Running Trivy scan on Docker image ++++===="
-                        // Authenticate and perform the scan
-                        withCredentials([
-                            usernamePassword(
-                                credentialsId: 'gitAuth', // Replace with your GitHub credentials ID as stored in Jenkins
-                                usernameVariable: 'GHCR_USERNAME', // Could use hashicorp vault or other secret management tools
-                                passwordVariable: 'GHCR_TOKEN'
-                            )
-                        ]) {
-                            env.TRIVY_SCAN_STATUS = sh(
-                                script: """
-                                    set -e
-                                    trivy image \
-                                        --exit-code 1 \
-                                        --cache-dir ${env.TRIVY_CACHE_DIR} \
-                                        --severity ${params.TRIVY_SEVERITY} \
-                                        --no-progress \
-                                        --format table \
-                                        --output ${reportDir}/trivy-report.html \
-                                        ${env.IMAGE_NAME}
-                                """,
-                                returnStatus: true
-                            ).toString()
-                        }
-
-                        // Consolidated logic to handle the report
-                        if (fileExists("${reportDir}/trivy-report.html")) {
-                            archiveArtifacts artifacts: "${reportDir}/trivy-report.html", fingerprint: true
-                            echo "Trivy report found and archived successfully."
-                        } else {
-                            error "Trivy report not generated at ${reportDir}/trivy-report.html. Failing the build."
-                        }
-                        // Analyze the scan results based on the exit code
-                        if (env.TRIVY_SCAN_STATUS.toInteger() == 0) {
-                            echo "No vulnerabilities found with severity ${params.TRIVY_SEVERITY}."
-                        } else if (env.TRIVY_SCAN_STATUS.toInteger() == 1) {
-                            error "Trivy scan found vulnerabilities or encountered issues. Exit code: ${env.TRIVY_SCAN_STATUS}"
-                        }
-                    } catch (Exception e) {
-                        unstable "Trivy scan encountered an error: ${e.getMessage()}"
-                        echo "Pipeline marked as unstable due to Trivy scan issues."
-                    }
-                }
+                }    
             }
         }
 
@@ -276,24 +288,26 @@ pipeline {
             // Uploads the Trivy report to S3 bucket for further analysis
             // The report is uploaded only if it exists and is not empty
             steps {
-                echo "====++++ Uploading Trivy Report to S3 ++++===="
-                script {
-                    def s3Bucket = env.S3_BUCKET_NAME.replaceAll('s3://', '')
-                    def s3Key = "trivy-reports/trivy-report.html"
-                    def s3Url = "s3://${s3Bucket}/${s3Key}"
+                   echo "====++++ Uploading Trivy Report to S3 ++++===="
+                dir(env.APP_DIR) {
+                    script {
+                        def s3Bucket = env.S3_BUCKET_NAME.replaceAll('s3://', '')
+                        def s3Key = "trivy-reports/trivy-report.html"
+                        def s3Url = "s3://${s3Bucket}/${s3Key}"
 
-                    def reportPath = "trivy-reports/trivy-report.html"
-                    def reportSize = fileExists(reportPath) ? sh(script: "wc -c < ${reportPath}", returnStdout: true).trim().toInteger() : 0
+                        def reportPath = "trivy-reports/trivy-report.html"
+                        def reportSize = fileExists(reportPath) ? sh(script: "wc -c < ${reportPath}", returnStdout: true).trim().toInteger() : 0
 
-                    if (reportSize > 0) {
-                        try {
-                            sh "aws s3 cp ${reportPath} ${s3Url}"
-                            echo "Trivy report uploaded successfully to S3: ${s3Url}"
-                        } catch (Exception e) {
-                            error("Failed to upload Trivy report to S3: ${s3Url}. Error: ${e.getMessage()}")
+                        if (reportSize > 0) {
+                            try {
+                                sh "aws s3 cp ${reportPath} ${s3Url}"
+                                echo "Trivy report uploaded successfully to S3: ${s3Url}"
+                            } catch (Exception e) {
+                                error("Failed to upload Trivy report to S3: ${s3Url}. Error: ${e.getMessage()}")
+                            }
+                        } else {
+                            echo "Trivy report not found or empty; skipping upload."
                         }
-                    } else {
-                        echo "Trivy report not found or empty; skipping upload."
                     }
                 }
             }
