@@ -1,348 +1,221 @@
-# Rhino Horn - Jenkins CI/CD Pipeline Project
-
-A comprehensive DevSecOps CI/CD pipeline implementation using Jenkins, demonstrating modern software delivery practices with integrated security scanning, code quality analysis, and automated deployment workflows.
-
-## 🏗️ Project Overview
-
-This project showcases a complete CI/CD pipeline for a Spring Boot application called "Rhino Horn" that implements GitOps and DevSecOps principles. The pipeline includes security scanning, code quality analysis, containerization, vulnerability assessment, and automated deployment with comprehensive monitoring and notification systems.
-
-## 📋 Table of Contents
-
-- [Architecture](#architecture)
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Project Structure](#project-structure)
-- [Pipeline Stages](#pipeline-stages)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Security Features](#security-features)
-- [Monitoring & Notifications](#monitoring--notifications)
-- [Troubleshooting](#troubleshooting)
-
-## 🏛️ Architecture
-
-📊 [View CI/CD Pipeline Diagram](https://orion83-h.github.io/Safari/cicd-pipeline.html)
-
-## ✨ Features
-
-### 🔒 Security-First Approach
-- **Secrets Detection**: GitLeaks integration for credential scanning
-- **Container Security**: Trivy vulnerability scanning with configurable severity levels
-- **Secure Dockerfile**: Non-root user validation and security best practices
-- **Quality Gates**: SonarCloud/SonarQube integration with quality thresholds
-
-### 🚀 Automated CI/CD
-- **Multi-branch Support**: Configurable branch-based deployments
-- **Parallel Processing**: Concurrent execution of independent stages
-- **Artifact Management**: Nexus repository integration
-- **Container Registry**: Docker Hub integration with automated pushes
-
-### 📊 Comprehensive Monitoring
-- **Build Retention**: Configurable build and artifact retention policies
-- **Email Notifications**: Environment-specific notification system
-- **Report Generation**: HTML reports for security scans and code quality
-- **S3 Integration**: Automated report storage and archival
-
-## 🛠️ Prerequisites
-
-### Infrastructure Requirements
-- Jenkins server with Docker support
-- Maven 3.9.11+
-- Java 17+
-- Docker Engine
-- SonarQube/SonarCloud instance
-- Nexus Repository Manager
-- AWS S3 bucket for reports
-
-### Jenkins Plugins
-- Pipeline Plugin
-- Docker Pipeline Plugin
-- SonarQube Scanner Plugin
-- Email Extension Plugin
-- AWS Steps Plugin
-- Credentials Plugin
-
-### External Tools
-- GitLeaks for secrets scanning
-- Trivy for container vulnerability scanning
-- Docker for containerization
-
-## 📁 Project Structure
-
+🦏 Rhino Horn — DevSecOps CI/CD Pipeline
+A production-grade DevSecOps pipeline for a Spring Boot application built on Jenkins, with integrated secrets detection, code quality analysis, container security gating, artifact management, and environment-scoped notifications.
+![Java](https://img.shields.io/badge/java-17%2B-orange)
+![Spring Boot](https://img.shields.io/badge/spring--boot-3.x-green)
+![Maven](https://img.shields.io/badge/maven-3.9.11-blue)
+![Docker](https://img.shields.io/badge/docker-hub-blue)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+---
+🏛️ Architecture
+📊 View Interactive CI/CD Pipeline Diagram →
+---
+🔄 Pipeline Stages
+```
+GitHub push (webhook)
+        │
+        ▼
+   Jenkins CI  [agent any · quietPeriod(30) · timestamps()]
+        │
+        ├── 01  Pull source code          shallow clone depth:10
+        ├── 02  Secrets scan              Gitleaks → SARIF report
+        ├── 03  Build Maven project       mvn clean package -DskipTests
+        ├── 04  Deploy to Nexus           mvn deploy → Nexus repository
+        ├── 05  SonarCloud analysis       quality gate timeout 10 min
+        ├── 06  Docker operations ─────────────────── [parallel · failFast:true]
+        │            ├── Check Dockerfile    fileExists check
+        │            └── Build Docker image  --no-cache --pull
+        ├── 07  Trivy scan               retry(3) DB pull · HTML report
+        ├── 08  Upload report → S3        aws s3 cp · skip if empty
+        │
+        ├── [TRIVY_SCAN_STATUS == 0?]
+        │       ├── ✕ vuln found → Skip push (image not published)
+        │       └── ✓ clean ──────────────────────────────────────┐
+        │                                                          ▼
+        ├── 09  Push Docker image         retry(3) → Docker Hub
+        ├── 10  Smoke test               docker run -p 8084 · sleep 30 · test-run.sh
+        ├── 11  Cleanup                  docker stop/rm/rmi
+        │
+        └── POST BUILD
+              ├── success  → email (main branch or prod env only)
+              ├── failure  → email (all environments, always)
+              └── always   → cleanWs()
+```
+---
+✨ Features
+Category	Detail
+🔒 Secrets scanning	Gitleaks — SARIF report, configurable fail-on-leak
+🧪 Code quality	SonarCloud analysis + quality gate enforcement (10 min timeout)
+🐳 Containerisation	Docker build with `--no-cache --pull`, non-root Alpine base
+🛡️ Vulnerability scan	Trivy — blocks push and smoke test on HIGH/CRITICAL CVEs
+📦 Artifact storage	Nexus Repository Manager via Maven deploy
+☁️ Report archival	AWS S3 — Trivy HTML report per build
+🔁 Retry logic	Trivy DB download: retry(3) · Docker push: retry(3)
+📧 Notifications	Success: main/prod only · Failure: all environments
+🧹 Cleanup	Container + image removed post-smoke · `cleanWs()` always
+---
+🛠️ Prerequisites
+Infrastructure
+Jenkins server with Docker support
+Maven 3.9.11 (configured in Global Tool Configuration as `Maven-3.9.11`)
+Java 17+
+SonarCloud account (`safari` org)
+Nexus Repository Manager (global Maven settings ID: `settings`)
+AWS S3 bucket: `trivy-reports-l7p2cwm0`
+Gitleaks installed on Jenkins agent
+Trivy installed on Jenkins agent
+Jenkins Plugins
+`Pipeline` · `Docker Pipeline` · `Pipeline Maven Integration` · `SonarQube Scanner` · `Email Extension` · `AWS Steps` · `Credentials`
+Jenkins Credentials Required
+Credential ID	Type	Used for
+`GIT_CREDS`	Username/password	GitHub repo checkout
+`gitAuth`	Username/password	Trivy scan (GHCR_TOKEN)
+`dockerCreds`	Username/password	Docker Hub push
+`SonarCloud`	SonarQube server config	SonarCloud analysis
+---
+📁 Project Structure
 ```
 Safari/
-├── .github/workflows/           # GitHub Actions CI pipeline
-│   └── rhino-ci.yml
-├── rhino-horn/                  # Main Spring Boot application
+├── .github/workflows/
+│   └── rhino-ci.yml                  # GitHub Actions CI
+├── rhino-horn/
 │   ├── src/
-│   │   ├── main/java/           # Application source code
-│   │   │   └── com/rhino_horn/safari/rhino_horn/
-│   │   │       └── RhinoHornApplication.java
-│   │   ├── main/resources/      # Application resources
-│   │   │   ├── static/          # CSS, JS files
-│   │   │   ├── templates/       # Thymeleaf templates
+│   │   ├── main/java/com/rhino_horn/safari/rhino_horn/
+│   │   │   └── RhinoHornApplication.java
+│   │   ├── main/resources/
+│   │   │   ├── static/               # CSS, JS
+│   │   │   ├── templates/            # Thymeleaf
 │   │   │   └── application.properties
-│   │   └── test/java/           # Test classes
-│   ├── Dockerfile               # Container definition
-│   ├── Jenkinsfile             # Jenkins pipeline definition
-│   ├── pom.xml                 # Maven configuration
-│   ├── test-run.sh             # Smoke test script
-│   ├── dockerfile-check.sh     # Dockerfile security validation
-│   └── mvnw, mvnw.cmd          # Maven wrapper
-└── README.md                   # This file
+│   │   └── test/java/
+│   ├── Dockerfile
+│   ├── Jenkinsfile
+│   ├── pom.xml
+│   ├── test-run.sh                   # Smoke test script
+│   └── dockerfile-check.sh           # Dockerfile security validation
+├── docs/
+│   └── cicd-pipeline.html            # Interactive pipeline diagram
+└── README.md
 ```
-
-## 🔄 Pipeline Stages
-
-### 1. **Source Code Retrieval**
-- Shallow clone from Git repository
-- Branch-specific checkout based on parameters
-- Clean workspace preparation
-
-### 2. **Security Scanning**
-```bash
-# GitLeaks secrets detection
-gitleaks detect --source rhino-horn \
-  --report-format sarif \
-  --report-path gitleaks-reports/gitleaks-report.sarif
-```
-
-### 3. **Build & Package**
-```bash
-# Maven build with test skipping for faster builds
-mvn clean package -DskipTests
-```
-
-### 4. **Artifact Deployment**
-```bash
-# Deploy to Nexus repository
-mvn deploy
-```
-
-### 5. **Code Quality Analysis** (Parallel)
-- **SonarCloud Analysis**: Code quality metrics and security hotspots
-- **SonarQube Quality Gate**: Threshold enforcement with quality gates
-
-### 6. **Docker Operations** (Parallel)
-- **Dockerfile Validation**: Security best practices verification
-- **Image Building**: Multi-stage Docker build with optimization
-
-### 7. **Container Security Scanning**
-```bash
-# Trivy vulnerability assessment
-trivy image --exit-code 1 \
-  --cache-dir /tmp/trivy \
-  --severity HIGH,CRITICAL \
-  --format table \
-  --output trivy-report.html \
-  ${IMAGE_NAME}
-```
-
-### 8. **Report Management**
-- S3 upload for long-term storage
-- Jenkins artifact archival
-- Email report distribution
-
-### 9. **Container Registry Push**
-- Conditional push based on security scan results
-- Multi-retry mechanism for reliability
-
-### 10. **Smoke Testing**
-```bash
-# Application health verification
-curl -is --max-time 10 http://localhost:8084
-```
-
-### 11. **Cleanup**
-- Container and image removal
-- Workspace cleanup
-- Resource optimization
-
-## ⚙️ Configuration
-
-### Pipeline Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `BUILD_NUM_TO_KEEP` | 2 | Number of builds to retain |
-| `BUILD_DAYS_TO_KEEP` | 7 | Days to keep builds |
-| `CONTAINER_PORT` | 8084 | Application container port |
-| `BRANCH_NAME` | main | Git branch to build |
-| `PROJECT_VERSION` | 1.0 | Project version tag |
-| `ENVIRONMENT` | dev | Deployment environment |
-| `TRIVY_SEVERITY` | HIGH | Vulnerability scan severity |
-| `FAIL_ON_LEAKS` | true | Fail build on secrets detection |
-
-### Environment Variables
-
+---
+⚙️ Pipeline Parameters
+Parameter	Type	Default	Options / Description
+`BUILD_NUM_TO_KEEP`	string	`2`	Builds to retain
+`BUILD_DAYS_TO_KEEP`	string	`7`	Days before build discard
+`BUILD_ARTIFACT_NUM_TO_KEEP`	string	`2`	Artifact copies to retain
+`BUILD_ARTIFACT_DAYS_TO_KEEP`	string	`2`	Days before artifact discard
+`CONTAINER_PORT`	string	`8084`	Port inside container
+`HOST_PORT`	string	`8084`	Host port for smoke test
+`BRANCH_NAME`	choice	`main`	`main` · `dev` · `staging`
+`MAIL_TO`	choice	—	`samuelhaddison@gmail.com` · `orionhouse83@gmail.com`
+`PROJECT_VERSION`	choice	`1.0`	`1.0` · `1.1` · `1.2`
+`ENVIRONMENT`	choice	`dev`	`dev` · `staging` · `prod`
+`TRIVY_SEVERITY`	choice	`HIGH`	`HIGH` · `CRITICAL`
+`FAIL_ON_LEAKS`	boolean	`true`	Fail build on secrets detection
+Environment Variables
 ```groovy
-environment {
-    GIT_URL = 'https://github.com/Orion83-h/Safari.git'
-    DOCKER_NAMESPACE = 'colanta06'
-    IMAGE_TAG = "v${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_NUMBER}"
-    SONAR_ORG = 'safari'
-    SONAR_PROJECT_KEY = 'safari_rhino-horn'
-    S3_BUCKET_NAME = "trivy-reports-l7p2cwm0"
-}
+GIT_URL           = 'https://github.com/Orion83-h/Safari.git'
+DOCKERFILE        = 'rhino-horn/Dockerfile'
+DOCKER_NAMESPACE  = 'colanta06'
+IMAGE_TAG         = "v1.0.${BUILD_NUMBER}"
+IMAGE_NAME        = "colanta06/<job-name>:${IMAGE_TAG}"
+CONTAINER_NAME    = "rhino-horn-${ENVIRONMENT}"
+SONAR_ORG         = 'safari'
+SONAR_PROJECT_KEY = 'safari_rhino-horn'
+SONARQUBE_URL     = 'https://sonarcloud.io'
+TRIVY_CACHE_DIR   = '/tmp/trivy'
+S3_BUCKET_NAME    = 'trivy-reports-l7p2cwm0'
 ```
-
-## 🚀 Usage
-
-### Running the Pipeline
-
-1. **Manual Trigger**:
-   ```bash
-   # Navigate to Jenkins job
-   # Click "Build with Parameters"
-   # Configure desired parameters
-   # Click "Build"
-   ```
-
-2. **Automated Trigger**:
-   - Git webhook on push to configured branches
-   - Scheduled builds via cron expressions
-   - Upstream job dependencies
-
-### Local Development
-
+---
+🚀 Usage
+Trigger the pipeline
 ```bash
-# Build application locally
+# Automatic — push to any configured branch
+git push origin main
+
+# Manual — Jenkins UI
+# → Build with Parameters → configure → Build
+```
+Run locally
+```bash
 cd rhino-horn
 ./mvnw clean package
-
-# Run application
 java -jar target/rhino-horn-0.0.1-SNAPSHOT.jar
-
-# Access application
 curl http://localhost:8084
 ```
-
-### Docker Operations
-
+Docker
 ```bash
-
-# Inspect docker image
-docker inspect colanta06/rhino-horn:v1.0 --format '{{.Config.Labels}}'
-
-# Example output
-{
-  "Maintainer": "Samuel Haddison",
-  "Email": "samuelhaddison71@gmail.com", 
-  "git.commit": "a1b2c3d4e5f6789..."
-}
-
-# Build Docker image
+# Build
 docker build -t rhino-horn:latest -f rhino-horn/Dockerfile .
 
-# Run container
+# Run
 docker run -p 8084:8084 rhino-horn:latest
 
-# Security scan
-trivy image rhino-horn:latest
+# Inspect labels
+docker inspect colanta06/rhino-horn:v1.0.1 --format '{{.Config.Labels}}'
+
+# Security scan locally
+trivy image --severity HIGH,CRITICAL colanta06/rhino-horn:latest
 ```
-
-## 🔐 Security Features
-
-### Secrets Management
-- **GitLeaks Integration**: Prevents credential exposure in source code
-- **Jenkins Credentials**: Secure storage of sensitive information
-- **Environment Isolation**: Separate credentials per environment
-
-### Container Security
-- **Non-root User**: Dockerfile enforces non-privileged execution
-- **Vulnerability Scanning**: Trivy integration with configurable thresholds
-- **Base Image Security**: Minimal Alpine-based images
-
-### Code Quality
-- **SonarCloud Analysis**: Security hotspot detection
-- **Quality Gates**: Automated quality threshold enforcement
-- **Test Coverage**: JaCoCo integration with 80% minimum coverage
-
-## 📧 Monitoring & Notifications
-
-### Email Notifications
-
-**Success Notifications** (Main branch/Production only):
-```html
-Subject: [prod] SUCCESS: rhino-horn - Build #123
-- Build details and version information
-- Security scan results
-- Links to reports and dashboards
-```
-
-**Failure Notifications** (All environments):
-```html
-Subject: [dev] FAILED: rhino-horn - Build #123
-- Failure details and affected stage
-- Console output links
-- Troubleshooting resources
-```
-
-### Report Generation
-- **Security Reports**: Trivy HTML reports with vulnerability details
-- **Code Quality**: SonarCloud dashboards and metrics
-- **Build Artifacts**: Maven artifacts and test results
-- **S3 Storage**: Long-term report archival
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**Build Failures**:
+---
+🔐 Security
+Gitleaks — blocks build on detected credentials (`FAIL_ON_LEAKS=true`)
+SonarCloud quality gate — aborts pipeline on threshold failure
+Trivy gate — Docker Hub push and smoke test skipped on HIGH/CRITICAL CVEs
+Non-root container — Dockerfile enforces unprivileged execution
+Jenkins Credentials — all secrets stored encrypted, never in source
+Trivy DB retry — `retry(3)` ensures DB download reliability
+---
+📧 Notifications
+Event	Trigger condition	Includes
+✅ Success	`main` branch or `prod` environment	Build info, image tag, Trivy status, links to report + SonarCloud
+❌ Failure	All environments, always	Failed stage, console link, Trivy + SonarCloud links
+Both emails attach `trivy-reports/**` and link to:
+Jenkins build details + console output
+Trivy HTML report (S3 + Jenkins artifact)
+SonarCloud dashboard
+---
+🔧 Troubleshooting
 ```bash
-# Check Jenkins console output
-# Verify tool installations
-# Validate credentials configuration
-```
-
-**Security Scan Failures**:
-```bash
-# Review Trivy report for vulnerabilities
-# Update base images
-# Apply security patches
-```
-
-**Quality Gate Failures**:
-```bash
-# Check SonarCloud dashboard
-# Review code coverage reports
-# Address code quality issues
-```
-
-### Debug Commands
-
-```bash
-# Test GitLeaks locally
+# Test secrets scan locally
 gitleaks detect --source rhino-horn --verbose
 
-# Validate Dockerfile
+# Lint Dockerfile
 docker run --rm -i hadolint/hadolint < rhino-horn/Dockerfile
 
-# Test application endpoints
+# Trivy scan locally
+trivy image --severity HIGH,CRITICAL \
+  --format table colanta06/rhino-horn:latest
+
+# Health check
 curl -v http://localhost:8084/actuator/health
+
+# Maven build debug
+cd rhino-horn && ./mvnw clean package -X
 ```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Implement changes with tests
-4. Ensure security scans pass
-5. Submit pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 👥 Authors
-
-- **Samuel Haddison** - Initial work and pipeline design
-- **DevOps Team** - Ongoing maintenance and improvements
-
-## 🔗 Related Resources
-
-- [Jenkins Documentation](https://www.jenkins.io/doc/)
-- [SonarCloud Documentation](https://sonarcloud.io/documentation)
-- [Trivy Security Scanner](https://trivy.dev/)
-- [Spring Boot Documentation](https://spring.io/projects/spring-boot)
-
+Common failures
+Stage	Symptom	Fix
+Secrets scan	`Secrets detected by Gitleaks!!`	Remove credential from source; rotate the secret
+SonarCloud	Quality gate timeout	Check SonarCloud dashboard; fix violations or extend timeout
+Trivy scan	Vulnerabilities found	Update base image or suppress accepted CVEs
+Docker push	Auth error	Verify `dockerCreds` credential ID in Jenkins
+Smoke test	`curl` timeout	Check container started; review `test-run.sh`
+---
+🤝 Contributing
+Fork the repository
+Create a feature branch: `git checkout -b feature/my-feature`
+Commit with tests: `git commit -m 'feat: add my feature'`
+Ensure Gitleaks, Trivy, and SonarCloud scans pass
+Open a pull request against `main`
+---
+👥 Authors
+Samuel Haddison — pipeline design & initial implementation
+---
+🔗 Resources
+Jenkins Pipeline Docs
+SonarCloud Docs
+Trivy
+Gitleaks
+Spring Boot
+Nexus Repository
+---
+📄 License
+MIT License — see LICENSE for details.
