@@ -1,15 +1,23 @@
-🦏 Rhino Horn — DevSecOps CI/CD Pipeline
+# 🦏 Rhino Horn — DevSecOps CI/CD Pipeline
+
 A production-grade DevSecOps pipeline for a Spring Boot application built on Jenkins, with integrated secrets detection, code quality analysis, container security gating, artifact management, and environment-scoped notifications.
-![Java](https://img.shields.io/badge/java-17%2B-orange)
-![Spring Boot](https://img.shields.io/badge/spring--boot-3.x-green)
-![Maven](https://img.shields.io/badge/maven-3.9.11-blue)
-![Docker](https://img.shields.io/badge/docker-hub-blue)
-![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+[![Java](https://img.shields.io/badge/java-17%2B-orange)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/spring--boot-3.x-green)](https://spring.io/projects/spring-boot)
+[![Maven](https://img.shields.io/badge/maven-3.9.11-blue)](https://maven.apache.org/)
+[![Docker](https://img.shields.io/badge/docker-hub-blue)](https://hub.docker.com/r/colanta06/rhino-horn)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+
 ---
-🏛️ Architecture
-📊 View Interactive CI/CD Pipeline Diagram →
+
+## 🏛️ Architecture
+
+📊 **[View Interactive CI/CD Pipeline Diagram →](https://orion83-h.github.io/Safari/cicd-pipeline.html)**
+
 ---
-🔄 Pipeline Stages
+
+## 🔄 Pipeline Stages
+
 ```
 GitHub push (webhook)
         │
@@ -40,39 +48,53 @@ GitHub push (webhook)
               ├── failure  → email (all environments, always)
               └── always   → cleanWs()
 ```
+
 ---
-✨ Features
-Category	Detail
-🔒 Secrets scanning	Gitleaks — SARIF report, configurable fail-on-leak
-🧪 Code quality	SonarCloud analysis + quality gate enforcement (10 min timeout)
-🐳 Containerisation	Docker build with `--no-cache --pull`, non-root Alpine base
-🛡️ Vulnerability scan	Trivy — blocks push and smoke test on HIGH/CRITICAL CVEs
-📦 Artifact storage	Nexus Repository Manager via Maven deploy
-☁️ Report archival	AWS S3 — Trivy HTML report per build
-🔁 Retry logic	Trivy DB download: retry(3) · Docker push: retry(3)
-📧 Notifications	Success: main/prod only · Failure: all environments
-🧹 Cleanup	Container + image removed post-smoke · `cleanWs()` always
+
+## ✨ Features
+
+| Category | Detail |
+|----------|--------|
+| 🔒 Secrets scanning | Gitleaks — SARIF report, configurable fail-on-leak |
+| 🧪 Code quality | SonarCloud analysis + quality gate enforcement (10 min timeout) |
+| 🐳 Containerisation | Docker build with `--no-cache --pull`, non-root Alpine base |
+| 🛡️ Vulnerability scan | Trivy — blocks push and smoke test on HIGH/CRITICAL CVEs |
+| 📦 Artifact storage | Nexus Repository Manager via Maven deploy |
+| ☁️ Report archival | AWS S3 — Trivy HTML report per build |
+| 🔁 Retry logic | Trivy DB download: retry(3) · Docker push: retry(3) |
+| 📧 Notifications | Success: main/prod only · Failure: all environments |
+| 🧹 Cleanup | Container + image removed post-smoke · `cleanWs()` always |
+
 ---
-🛠️ Prerequisites
-Infrastructure
-Jenkins server with Docker support
-Maven 3.9.11 (configured in Global Tool Configuration as `Maven-3.9.11`)
-Java 17+
-SonarCloud account (`safari` org)
-Nexus Repository Manager (global Maven settings ID: `settings`)
-AWS S3 bucket: `trivy-reports-l7p2cwm0`
-Gitleaks installed on Jenkins agent
-Trivy installed on Jenkins agent
-Jenkins Plugins
+
+## 🛠️ Prerequisites
+
+### Infrastructure
+- Jenkins server with Docker support
+- Maven 3.9.11 (configured in Global Tool Configuration as `Maven-3.9.11`)
+- Java 17+
+- SonarCloud account (`safari` org)
+- Nexus Repository Manager (global Maven settings ID: `settings`)
+- AWS S3 bucket: `trivy-reports-l7p2cwm0`
+- Gitleaks installed on Jenkins agent
+- Trivy installed on Jenkins agent
+
+### Jenkins Plugins
 `Pipeline` · `Docker Pipeline` · `Pipeline Maven Integration` · `SonarQube Scanner` · `Email Extension` · `AWS Steps` · `Credentials`
-Jenkins Credentials Required
-Credential ID	Type	Used for
-`GIT_CREDS`	Username/password	GitHub repo checkout
-`gitAuth`	Username/password	Trivy scan (GHCR_TOKEN)
-`dockerCreds`	Username/password	Docker Hub push
-`SonarCloud`	SonarQube server config	SonarCloud analysis
+
+### Jenkins Credentials Required
+
+| Credential ID | Type | Used for |
+|---------------|------|----------|
+| `GIT_CREDS` | Username/password | GitHub repo checkout |
+| `gitAuth` | Username/password | Trivy scan (GHCR_TOKEN) |
+| `dockerCreds` | Username/password | Docker Hub push |
+| `SonarCloud` | SonarQube server config | SonarCloud analysis |
+
 ---
-📁 Project Structure
+
+## 📁 Project Structure
+
 ```
 Safari/
 ├── .github/workflows/
@@ -95,22 +117,28 @@ Safari/
 │   └── cicd-pipeline.html            # Interactive pipeline diagram
 └── README.md
 ```
+
 ---
-⚙️ Pipeline Parameters
-Parameter	Type	Default	Options / Description
-`BUILD_NUM_TO_KEEP`	string	`2`	Builds to retain
-`BUILD_DAYS_TO_KEEP`	string	`7`	Days before build discard
-`BUILD_ARTIFACT_NUM_TO_KEEP`	string	`2`	Artifact copies to retain
-`BUILD_ARTIFACT_DAYS_TO_KEEP`	string	`2`	Days before artifact discard
-`CONTAINER_PORT`	string	`8084`	Port inside container
-`HOST_PORT`	string	`8084`	Host port for smoke test
-`BRANCH_NAME`	choice	`main`	`main` · `dev` · `staging`
-`MAIL_TO`	choice	—	`samuelhaddison@gmail.com` · `orionhouse83@gmail.com`
-`PROJECT_VERSION`	choice	`1.0`	`1.0` · `1.1` · `1.2`
-`ENVIRONMENT`	choice	`dev`	`dev` · `staging` · `prod`
-`TRIVY_SEVERITY`	choice	`HIGH`	`HIGH` · `CRITICAL`
-`FAIL_ON_LEAKS`	boolean	`true`	Fail build on secrets detection
-Environment Variables
+
+## ⚙️ Pipeline Parameters
+
+| Parameter | Type | Default | Options / Description |
+|-----------|------|---------|----------------------|
+| `BUILD_NUM_TO_KEEP` | string | `2` | Builds to retain |
+| `BUILD_DAYS_TO_KEEP` | string | `7` | Days before build discard |
+| `BUILD_ARTIFACT_NUM_TO_KEEP` | string | `2` | Artifact copies to retain |
+| `BUILD_ARTIFACT_DAYS_TO_KEEP` | string | `2` | Days before artifact discard |
+| `CONTAINER_PORT` | string | `8084` | Port inside container |
+| `HOST_PORT` | string | `8084` | Host port for smoke test |
+| `BRANCH_NAME` | choice | `main` | `main` · `dev` · `staging` |
+| `MAIL_TO` | choice | — | `samuelhaddison@gmail.com` · `orionhouse83@gmail.com` |
+| `PROJECT_VERSION` | choice | `1.0` | `1.0` · `1.1` · `1.2` |
+| `ENVIRONMENT` | choice | `dev` | `dev` · `staging` · `prod` |
+| `TRIVY_SEVERITY` | choice | `HIGH` | `HIGH` · `CRITICAL` |
+| `FAIL_ON_LEAKS` | boolean | `true` | Fail build on secrets detection |
+
+### Environment Variables
+
 ```groovy
 GIT_URL           = 'https://github.com/Orion83-h/Safari.git'
 DOCKERFILE        = 'rhino-horn/Dockerfile'
@@ -124,9 +152,13 @@ SONARQUBE_URL     = 'https://sonarcloud.io'
 TRIVY_CACHE_DIR   = '/tmp/trivy'
 S3_BUCKET_NAME    = 'trivy-reports-l7p2cwm0'
 ```
+
 ---
-🚀 Usage
-Trigger the pipeline
+
+## 🚀 Usage
+
+### Trigger the pipeline
+
 ```bash
 # Automatic — push to any configured branch
 git push origin main
@@ -134,14 +166,18 @@ git push origin main
 # Manual — Jenkins UI
 # → Build with Parameters → configure → Build
 ```
-Run locally
+
+### Run locally
+
 ```bash
 cd rhino-horn
 ./mvnw clean package
 java -jar target/rhino-horn-0.0.1-SNAPSHOT.jar
 curl http://localhost:8084
 ```
-Docker
+
+### Docker
+
 ```bash
 # Build
 docker build -t rhino-horn:latest -f rhino-horn/Dockerfile .
@@ -155,25 +191,36 @@ docker inspect colanta06/rhino-horn:v1.0.1 --format '{{.Config.Labels}}'
 # Security scan locally
 trivy image --severity HIGH,CRITICAL colanta06/rhino-horn:latest
 ```
+
 ---
-🔐 Security
-Gitleaks — blocks build on detected credentials (`FAIL_ON_LEAKS=true`)
-SonarCloud quality gate — aborts pipeline on threshold failure
-Trivy gate — Docker Hub push and smoke test skipped on HIGH/CRITICAL CVEs
-Non-root container — Dockerfile enforces unprivileged execution
-Jenkins Credentials — all secrets stored encrypted, never in source
-Trivy DB retry — `retry(3)` ensures DB download reliability
+
+## 🔐 Security
+
+- **Gitleaks** — blocks build on detected credentials (`FAIL_ON_LEAKS=true`)
+- **SonarCloud quality gate** — aborts pipeline on threshold failure
+- **Trivy gate** — Docker Hub push and smoke test skipped on HIGH/CRITICAL CVEs
+- **Non-root container** — Dockerfile enforces unprivileged execution
+- **Jenkins Credentials** — all secrets stored encrypted, never in source
+- **Trivy DB retry** — `retry(3)` ensures DB download reliability
+
 ---
-📧 Notifications
-Event	Trigger condition	Includes
-✅ Success	`main` branch or `prod` environment	Build info, image tag, Trivy status, links to report + SonarCloud
-❌ Failure	All environments, always	Failed stage, console link, Trivy + SonarCloud links
+
+## 📧 Notifications
+
+| Event | Trigger condition | Includes |
+|-------|------------------|---------|
+| ✅ Success | `main` branch **or** `prod` environment | Build info, image tag, Trivy status, links to report + SonarCloud |
+| ❌ Failure | All environments, always | Failed stage, console link, Trivy + SonarCloud links |
+
 Both emails attach `trivy-reports/**` and link to:
-Jenkins build details + console output
-Trivy HTML report (S3 + Jenkins artifact)
-SonarCloud dashboard
+- Jenkins build details + console output
+- Trivy HTML report (S3 + Jenkins artifact)
+- SonarCloud dashboard
+
 ---
-🔧 Troubleshooting
+
+## 🔧 Troubleshooting
+
 ```bash
 # Test secrets scan locally
 gitleaks detect --source rhino-horn --verbose
@@ -191,31 +238,46 @@ curl -v http://localhost:8084/actuator/health
 # Maven build debug
 cd rhino-horn && ./mvnw clean package -X
 ```
-Common failures
-Stage	Symptom	Fix
-Secrets scan	`Secrets detected by Gitleaks!!`	Remove credential from source; rotate the secret
-SonarCloud	Quality gate timeout	Check SonarCloud dashboard; fix violations or extend timeout
-Trivy scan	Vulnerabilities found	Update base image or suppress accepted CVEs
-Docker push	Auth error	Verify `dockerCreds` credential ID in Jenkins
-Smoke test	`curl` timeout	Check container started; review `test-run.sh`
+
+### Common failures
+
+| Stage | Symptom | Fix |
+|-------|---------|-----|
+| Secrets scan | `Secrets detected by Gitleaks!!` | Remove credential from source; rotate the secret |
+| SonarCloud | Quality gate timeout | Check SonarCloud dashboard; fix violations or extend timeout |
+| Trivy scan | Vulnerabilities found | Update base image or suppress accepted CVEs |
+| Docker push | Auth error | Verify `dockerCreds` credential ID in Jenkins |
+| Smoke test | `curl` timeout | Check container started; review `test-run.sh` |
+
 ---
-🤝 Contributing
-Fork the repository
-Create a feature branch: `git checkout -b feature/my-feature`
-Commit with tests: `git commit -m 'feat: add my feature'`
-Ensure Gitleaks, Trivy, and SonarCloud scans pass
-Open a pull request against `main`
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Commit with tests: `git commit -m 'feat: add my feature'`
+4. Ensure Gitleaks, Trivy, and SonarCloud scans pass
+5. Open a pull request against `main`
+
 ---
-👥 Authors
-Samuel Haddison — pipeline design & initial implementation
+
+## 👥 Authors
+
+**Samuel Haddison** — pipeline design & initial implementation
+
 ---
-🔗 Resources
-Jenkins Pipeline Docs
-SonarCloud Docs
-Trivy
-Gitleaks
-Spring Boot
-Nexus Repository
+
+## 🔗 Resources
+
+- [Jenkins Pipeline Docs](https://www.jenkins.io/doc/book/pipeline/)
+- [SonarCloud Docs](https://sonarcloud.io/documentation)
+- [Trivy](https://trivy.dev/)
+- [Gitleaks](https://github.com/gitleaks/gitleaks)
+- [Spring Boot](https://spring.io/projects/spring-boot)
+- [Nexus Repository](https://help.sonatype.com/repomanager3)
+
 ---
-📄 License
-MIT License — see LICENSE for details.
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
