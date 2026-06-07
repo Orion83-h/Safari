@@ -21,9 +21,7 @@ This project showcases a complete CI/CD pipeline for a Spring Boot application c
 
 ## 🏛️ Architecture
 
-```
-📊 [View CI/CD Pipeline Diagram](https://Orion83-h.github.io/Safari/cicd-pipeline.html)
-```
+📊 [View CI/CD Pipeline Diagram](https://orion83-h.github.io/Safari/cicd-pipeline.html)
 
 ## ✨ Features
 
