@@ -22,22 +22,7 @@ This project showcases a complete CI/CD pipeline for a Spring Boot application c
 ## 🏛️ Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Source Code   │───▶│  Jenkins CI/CD  │───▶│   Docker Hub    │
-│   (GitHub)      │    │    Pipeline     │    │   Registry      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                              │
-                              ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   SonarCloud    │◀───│  Quality Gates  │───▶│   Trivy Scan    │
-│   Analysis      │    │   & Security    │    │   Reports       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                              │
-                              ▼
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Nexus Repo    │◀───│   Deployment    │───▶│   AWS S3        │
-│   Artifacts     │    │   & Testing     │    │   Reports       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+📊 [View CI/CD Pipeline Diagram](https://Orion83-h.github.io/Safari/cicd-pipeline.html)
 ```
 
 ## ✨ Features
