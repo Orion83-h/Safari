@@ -3,680 +3,421 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CI/CD Pipeline Architecture</title>
+<title>Rhino Horn — CI/CD Pipeline Architecture</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
-  :root {
-    --bg: #0d1117;
-    --bg2: #161b22;
-    --bg3: #21262d;
-    --border: #30363d;
-    --border2: #444c56;
-    --text: #e6edf3;
-    --text2: #8b949e;
-    --text3: #6e7681;
-    --amber: #f0883e;
-    --amber-bg: #2a1f0e;
-    --amber-border: #7a4510;
-    --coral: #ff7b72;
-    --coral-bg: #2a1214;
-    --coral-border: #7a2419;
-    --teal: #39d353;
-    --teal-bg: #0d2a14;
-    --teal-border: #1a6330;
-    --blue: #58a6ff;
-    --blue-bg: #0d1f2e;
-    --blue-border: #1a4a7a;
-    --purple: #a371f7;
-    --purple-bg: #1a1030;
-    --purple-border: #4a2a8a;
-    --green: #7ee787;
-    --green-bg: #0d2014;
-    --green-border: #1a5a24;
-    --red: #ff6b6b;
-    --red-bg: #2a0d0d;
-    --red-border: #7a1a1a;
-    --gray-bg: #1c2128;
-    --gray-border: #373e47;
-    --font-mono: 'JetBrains Mono', monospace;
-    --font-sans: 'Inter', sans-serif;
-  }
+:root {
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--border2:#444c56;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --amber:#f0883e;--amber-bg:#2a1f0e;--amber-bd:#7a4510;
+  --coral:#ff7b72;--coral-bg:#2a1214;--coral-bd:#7a2419;
+  --teal:#39d353;--teal-bg:#0d2a14;--teal-bd:#1a6330;
+  --blue:#58a6ff;--blue-bg:#0d1f2e;--blue-bd:#1a4a7a;
+  --purple:#a371f7;--purple-bg:#1a1030;--purple-bd:#4a2a8a;
+  --green:#7ee787;--green-bg:#0d2014;--green-bd:#1a5a24;
+  --red:#ff6b6b;--red-bg:#2a0d0d;--red-bd:#7a1a1a;
+  --gray-bg:#1c2128;--gray-bd:#373e47;
+  --font-mono:'JetBrains Mono',monospace;
+  --font-sans:'Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);padding:40px 24px 60px}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Header ── */
+.header{max-width:980px;margin:0 auto 40px;padding-bottom:24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.header h1{font-family:var(--font-mono);font-size:20px;font-weight:700;letter-spacing:-.5px}
+.header p{font-size:13px;color:var(--text2);margin-top:4px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;border:1px solid;margin-right:5px}
+.b-amber{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd)}
+.b-blue{color:var(--blue);background:var(--blue-bg);border-color:var(--blue-bd)}
+.b-coral{color:var(--coral);background:var(--coral-bg);border-color:var(--coral-bd)}
+.b-green{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-sans);
-    min-height: 100vh;
-    padding: 40px 24px 60px;
-  }
+/* ── Section title ── */
+.sec{max-width:980px;margin:0 auto 18px;display:flex;align-items:center;gap:10px}
+.sec h2{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
 
-  /* ── Header ── */
-  .header {
-    max-width: 900px;
-    margin: 0 auto 48px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .header-left h1 {
-    font-family: var(--font-mono);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -.5px;
-  }
-  .header-left p {
-    font-size: 13px;
-    color: var(--text2);
-    margin-top: 4px;
-  }
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-family: var(--font-mono);
-    padding: 3px 8px;
-    border-radius: 20px;
-    border: 1px solid;
-    margin-right: 6px;
-  }
-  .badge-amber { color: var(--amber); background: var(--amber-bg); border-color: var(--amber-border); }
-  .badge-blue  { color: var(--blue);  background: var(--blue-bg);  border-color: var(--blue-border); }
-  .badge-green { color: var(--green); background: var(--green-bg); border-color: var(--green-border); }
+/* ── Overview card ── */
+.ov-card{max-width:980px;margin:0 auto 52px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px 24px;overflow-x:auto}
+.ov-flow{display:flex;align-items:center;min-width:720px;gap:0}
+.ov-node{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0}
+.ov-ico{width:50px;height:50px;border-radius:11px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:22px}
+.ov-lbl{font-size:11px;font-weight:600;color:var(--text);text-align:center}
+.ov-sub{font-size:10px;color:var(--text3);text-align:center;max-width:72px;line-height:1.3}
+.ov-arr{flex:1;padding:0 4px;min-width:20px;display:flex;align-items:center}
+.ov-arr svg{width:100%;height:14px}
+.ov-fan{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.ov-fn{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:7px;border:1px solid;font-size:11px;font-weight:500;white-space:nowrap}
+.ov-fn i{font-size:13px}
 
-  /* ── Section titles ── */
-  .section-title {
-    max-width: 900px;
-    margin: 0 auto 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .section-title h2 {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text2);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
-  .section-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
+/* ── Main layout ── */
+.main{max-width:980px;margin:0 auto;display:grid;grid-template-columns:1fr 270px;gap:0 28px;align-items:start}
+.pipe{display:flex;flex-direction:column;align-items:center}
 
-  /* ── OVERVIEW diagram ── */
-  .overview {
-    max-width: 900px;
-    margin: 0 auto 56px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 32px 24px;
-    overflow-x: auto;
-  }
-  .ov-flow {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    min-width: 700px;
-  }
-  .ov-node {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-  .ov-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 12px;
-    border: 1px solid;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-  }
-  .ov-label { font-size: 11px; font-weight: 600; color: var(--text); text-align: center; }
-  .ov-sub   { font-size: 10px; color: var(--text3); text-align: center; max-width: 70px; line-height: 1.3; }
-  .ov-arrow {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    padding: 0 4px;
-    min-width: 24px;
-  }
-  .ov-arrow svg { width: 100%; height: 16px; }
-  .ov-fan {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    flex-shrink: 0;
-  }
-  .ov-fan-node {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text);
-    white-space: nowrap;
-  }
-  .ov-fan-node i { font-size: 14px; }
-  .ov-fan-line {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .ov-fan-line svg { flex-shrink: 0; }
+/* ── Nodes ── */
+.node{display:flex;align-items:center;gap:11px;padding:11px 15px;border-radius:10px;border:1px solid;width:100%;max-width:400px}
+.node .ico{font-size:17px;width:24px;text-align:center;flex-shrink:0}
+.node .lbl{font-size:13px;font-weight:500;color:var(--text);line-height:1.3}
+.node .sub{font-size:11px;color:var(--text2);margin-top:1px}
+.n-gray{background:var(--gray-bg);border-color:var(--gray-bd)}
+.n-amber{background:var(--amber-bg);border-color:var(--amber-bd)}
+.n-coral{background:var(--coral-bg);border-color:var(--coral-bd)}
+.n-blue{background:var(--blue-bg);border-color:var(--blue-bd)}
+.n-teal{background:var(--teal-bg);border-color:var(--teal-bd)}
+.n-green{background:var(--green-bg);border-color:var(--green-bd)}
+.n-purple{background:var(--purple-bg);border-color:var(--purple-bd)}
+.n-red{background:var(--red-bg);border-color:var(--red-bd)}
 
-  /* ── Jenkins pipeline ── */
-  .pipeline {
-    max-width: 900px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 280px;
-    gap: 0 32px;
-    align-items: start;
-  }
-  .pipe-main { display: flex; flex-direction: column; align-items: center; }
+/* ── Connectors ── */
+.arr{width:1px;height:20px;background:var(--border2);position:relative}
+.arr::after{content:'';position:absolute;bottom:-4px;left:-3px;border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-top:5px solid var(--border2)}
 
-  .pipe-node {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 11px 16px;
-    border-radius: 10px;
-    border: 1px solid;
-    width: 100%;
-    max-width: 380px;
-  }
-  .pipe-node .ico { font-size: 18px; width: 26px; text-align: center; flex-shrink: 0; }
-  .pipe-node .lbl { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
-  .pipe-node .sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+/* ── Parallel block ── */
+.par-wrap{width:100%;max-width:400px;border:1px dashed var(--blue-bd);border-radius:10px;padding:12px;background:rgba(13,31,46,.5)}
+.par-tag{font-family:var(--font-mono);font-size:10px;color:var(--blue);margin-bottom:9px;letter-spacing:.05em}
+.par-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.par-row .node{max-width:100%}
 
-  .n-gray   { background: var(--gray-bg); border-color: var(--gray-border); }
-  .n-amber  { background: var(--amber-bg); border-color: var(--amber-border); }
-  .n-coral  { background: var(--coral-bg); border-color: var(--coral-border); }
-  .n-blue   { background: var(--blue-bg);  border-color: var(--blue-border); }
-  .n-teal   { background: var(--teal-bg);  border-color: var(--teal-border); }
-  .n-green  { background: var(--green-bg); border-color: var(--green-border); }
-  .n-purple { background: var(--purple-bg); border-color: var(--purple-border); }
-  .n-red    { background: var(--red-bg);   border-color: var(--red-border); }
+/* ── Options block ── */
+.opts-wrap{width:100%;max-width:400px;border:1px dashed var(--gray-bd);border-radius:10px;padding:10px 12px;background:rgba(28,33,40,.5);margin-bottom:0}
+.opts-tag{font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-bottom:7px;letter-spacing:.05em}
+.opts-row{display:flex;gap:7px;flex-wrap:wrap}
+.opts-pill{font-size:10px;font-family:var(--font-mono);padding:2px 8px;border-radius:12px;background:var(--bg3);border:1px solid var(--border);color:var(--text2)}
 
-  .pipe-arrow {
-    width: 1px;
-    height: 22px;
-    background: var(--border2);
-    position: relative;
-  }
-  .pipe-arrow::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: -3px;
-    border-left: 3.5px solid transparent;
-    border-right: 3.5px solid transparent;
-    border-top: 5px solid var(--border2);
-  }
+/* ── Diamond gate ── */
+.dia-wrap{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px}
+.diamond{width:88px;height:88px;background:var(--purple-bg);border:1px solid var(--purple-bd);transform:rotate(45deg);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.diamond-inner{transform:rotate(-45deg);text-align:center;font-size:11px;font-weight:600;color:var(--purple);line-height:1.4}
+.gate-row{display:flex;align-items:flex-start;width:100%;max-width:400px}
+.gate-yes,.gate-no{display:flex;flex-direction:column;align-items:center;flex:1}
+.gate-vl{width:1px;height:18px;position:relative}
+.gate-vl::after{content:'';position:absolute;bottom:-4px;left:-3px;border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-top:5px solid}
+.gate-yes .gate-vl{background:var(--green)}.gate-yes .gate-vl::after{border-top-color:var(--green)}
+.gate-no  .gate-vl{background:var(--red)  }.gate-no  .gate-vl::after{border-top-color:var(--red)}
+.gate-tag{font-family:var(--font-mono);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-bottom:3px}
+.gt-yes{color:var(--green);background:var(--green-bg)}
+.gt-no {color:var(--red);  background:var(--red-bg)}
 
-  /* parallel block */
-  .parallel-container {
-    width: 100%;
-    max-width: 380px;
-    border: 1px dashed var(--blue-border);
-    border-radius: 10px;
-    padding: 12px;
-    background: rgba(13,31,46,0.5);
-  }
-  .parallel-tag {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--blue);
-    margin-bottom: 10px;
-    letter-spacing: .06em;
-  }
-  .parallel-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .parallel-row .pipe-node { max-width: 100%; }
+/* ── Post divider ── */
+.post-div{width:100%;max-width:400px;display:flex;align-items:center;gap:8px;margin:4px 0}
+.post-div::before,.post-div::after{content:'';flex:1;border-top:1px dashed var(--border2)}
+.post-div span{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.07em;text-transform:uppercase}
 
-  /* diamond */
-  .diamond-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 380px;
-  }
-  .diamond-shape {
-    width: 90px;
-    height: 90px;
-    background: var(--purple-bg);
-    border: 1px solid var(--purple-border);
-    transform: rotate(45deg);
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .diamond-inner {
-    transform: rotate(-45deg);
-    text-align: center;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--purple);
-    line-height: 1.4;
-  }
-  .gate-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 0;
-    width: 100%;
-    max-width: 380px;
-    margin-top: 0;
-  }
-  .gate-yes, .gate-no {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex: 1;
-  }
-  .gate-line-v { width: 1px; height: 20px; position: relative; }
-  .gate-line-v::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: -3px;
-    border-left: 3.5px solid transparent;
-    border-right: 3.5px solid transparent;
-    border-top: 5px solid;
-  }
-  .gate-yes .gate-line-v { background: var(--green); }
-  .gate-yes .gate-line-v::after { border-top-color: var(--green); }
-  .gate-no  .gate-line-v { background: var(--red); }
-  .gate-no  .gate-line-v::after { border-top-color: var(--red); }
-  .gate-tag {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 4px;
-    margin-bottom: 4px;
-  }
-  .gate-tag-yes { color: var(--green); background: var(--green-bg); }
-  .gate-tag-no  { color: var(--red);   background: var(--red-bg); }
+/* ── Stage badge on right ── */
+.stage-num{font-family:var(--font-mono);font-size:9px;color:var(--text3);align-self:center;padding:1px 5px;border:1px solid var(--border);border-radius:4px;margin-left:auto;flex-shrink:0}
 
-  /* post divider */
-  .post-divider {
-    width: 100%;
-    max-width: 380px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 4px 0;
-  }
-  .post-divider::before, .post-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-    border-top: 1px dashed var(--border2);
-    background: none;
-  }
-  .post-divider span {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text3);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-  }
+/* ── Sidebar ── */
+.sidebar{padding-top:4px;position:sticky;top:20px}
+.sb-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px}
+.sb-card h3{font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
+.leg{display:flex;align-items:center;gap:7px;margin-bottom:7px;font-size:12px;color:var(--text2)}
+.leg-dot{width:10px;height:10px;border-radius:3px;border:1px solid;flex-shrink:0}
+.tool{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);margin-bottom:5px;font-size:11px;color:var(--text)}
+.tool i{font-size:13px}
+.note{font-size:11px;color:var(--text2);line-height:1.6}
+.note i{font-size:12px;vertical-align:middle}
+.param-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px}
+.param-row:last-child{border-bottom:none}
+.param-key{color:var(--text2);font-family:var(--font-mono)}
+.param-val{color:var(--amber);font-family:var(--font-mono);font-size:10px}
 
-  /* ── Sidebar legend ── */
-  .sidebar {
-    padding-top: 8px;
-    position: sticky;
-    top: 24px;
-  }
-  .sidebar h3 {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text2);
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    margin-bottom: 14px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    font-size: 12px;
-    color: var(--text2);
-  }
-  .legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-    border: 1px solid;
-    flex-shrink: 0;
-  }
-  .sidebar-section {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 16px;
-  }
-  .sidebar-section h4 {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text3);
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .tool-chip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 8px;
-    border-radius: 6px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    margin-bottom: 6px;
-    font-size: 11px;
-    color: var(--text);
-  }
-  .tool-chip i { font-size: 13px; }
-
-  /* ── Footer ── */
-  .footer {
-    max-width: 900px;
-    margin: 48px auto 0;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .footer p { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
+/* ── Footer ── */
+.footer{max-width:980px;margin:40px auto 0;padding-top:18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.footer p{font-size:11px;color:var(--text3);font-family:var(--font-mono)}
 </style>
 </head>
 <body>
 
-<!-- ── Header ── -->
+<!-- Header -->
 <div class="header">
-  <div class="header-left">
-    <h1>CI/CD Pipeline Architecture</h1>
-    <p>GitHub → Jenkins → Docker Hub · Nexus · AWS S3</p>
+  <div>
+    <h1>🦏 Rhino Horn — CI/CD Pipeline</h1>
+    <p>GitHub · Jenkins · Docker Hub · Nexus · SonarCloud · AWS S3</p>
   </div>
   <div>
-    <span class="badge badge-amber"><i class="ti ti-git-branch"></i> Jenkins</span>
-    <span class="badge badge-blue"><i class="ti ti-brand-docker"></i> Docker</span>
-    <span class="badge badge-green"><i class="ti ti-shield-check"></i> Trivy</span>
+    <span class="badge b-amber"><i class="ti ti-settings"></i> Jenkins</span>
+    <span class="badge b-blue"><i class="ti ti-brand-docker"></i> Docker Hub</span>
+    <span class="badge b-coral"><i class="ti ti-shield-search"></i> Trivy</span>
+    <span class="badge b-green"><i class="ti ti-chart-dots"></i> SonarCloud</span>
   </div>
 </div>
 
 <!-- ── Section 1: Overview ── -->
-<div class="section-title"><h2>Pipeline overview</h2></div>
-<div class="overview">
+<div class="sec"><h2>Pipeline overview</h2></div>
+<div class="ov-card">
   <div class="ov-flow">
 
-    <!-- GitHub -->
     <div class="ov-node">
-      <div class="ov-icon" style="background:var(--gray-bg);border-color:var(--gray-border)">
-        <i class="ti ti-brand-github" style="color:#e6edf3;font-size:24px"></i>
-      </div>
-      <div class="ov-label">GitHub</div>
+      <div class="ov-ico" style="background:var(--gray-bg);border-color:var(--gray-bd)"><i class="ti ti-brand-github" style="color:var(--text);font-size:24px"></i></div>
+      <div class="ov-lbl">GitHub</div>
       <div class="ov-sub">Webhook push</div>
     </div>
+    <div class="ov-arr"><svg viewBox="0 0 60 14" fill="none"><line x1="0" y1="7" x2="50" y2="7" stroke="#444c56" stroke-width="1.5"/><path d="M46 3L54 7L46 11" stroke="#444c56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
 
-    <div class="ov-arrow">
-      <svg viewBox="0 0 60 16" fill="none"><line x1="0" y1="8" x2="52" y2="8" stroke="#444c56" stroke-width="1.5"/><path d="M48 4L56 8L48 12" stroke="#444c56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-    </div>
-
-    <!-- Jenkins -->
     <div class="ov-node">
-      <div class="ov-icon" style="background:var(--amber-bg);border-color:var(--amber-border)">
-        <i class="ti ti-settings" style="color:var(--amber);font-size:24px"></i>
-      </div>
-      <div class="ov-label">Jenkins CI</div>
-      <div class="ov-sub">10 stages + parallel + post</div>
+      <div class="ov-ico" style="background:var(--amber-bg);border-color:var(--amber-bd)"><i class="ti ti-settings" style="color:var(--amber);font-size:24px"></i></div>
+      <div class="ov-lbl">Jenkins CI</div>
+      <div class="ov-sub">11 stages + post-build</div>
     </div>
+    <div class="ov-arr"><svg viewBox="0 0 60 14" fill="none"><line x1="0" y1="7" x2="50" y2="7" stroke="#444c56" stroke-width="1.5"/><path d="M46 3L54 7L46 11" stroke="#444c56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
 
-    <div class="ov-arrow" style="min-width:32px">
-      <svg viewBox="0 0 60 16" fill="none"><line x1="0" y1="8" x2="52" y2="8" stroke="#444c56" stroke-width="1.5"/><path d="M48 4L56 8L48 12" stroke="#444c56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-    </div>
-
-    <!-- Fan outputs -->
     <div class="ov-fan">
-      <div class="ov-fan-node" style="background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)">
-        <i class="ti ti-brand-docker"></i> Docker Hub
-      </div>
-      <div class="ov-fan-node" style="background:var(--green-bg);border-color:var(--green-border);color:var(--green)">
-        <i class="ti ti-archive"></i> Nexus repo
-      </div>
-      <div class="ov-fan-node" style="background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)">
-        <i class="ti ti-cloud-upload"></i> AWS S3 (Trivy report)
-      </div>
+      <div class="ov-fn" style="background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue)"><i class="ti ti-brand-docker"></i> Docker Hub</div>
+      <div class="ov-fn" style="background:var(--green-bg);border-color:var(--green-bd);color:var(--green)"><i class="ti ti-archive"></i> Nexus repo</div>
+      <div class="ov-fn" style="background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber)"><i class="ti ti-cloud-upload"></i> AWS S3 — Trivy report</div>
     </div>
+    <div class="ov-arr"><svg viewBox="0 0 60 14" fill="none"><line x1="0" y1="7" x2="50" y2="7" stroke="#444c56" stroke-width="1.5"/><path d="M46 3L54 7L46 11" stroke="#444c56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
 
-    <div class="ov-arrow" style="min-width:32px">
-      <svg viewBox="0 0 60 16" fill="none"><line x1="0" y1="8" x2="52" y2="8" stroke="#444c56" stroke-width="1.5"/><path d="M48 4L56 8L48 12" stroke="#444c56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-    </div>
-
-    <!-- Smoke + email -->
     <div class="ov-node">
-      <div class="ov-icon" style="background:var(--purple-bg);border-color:var(--purple-border)">
-        <i class="ti ti-smoke" style="color:var(--purple);font-size:24px"></i>
-      </div>
-      <div class="ov-label">Smoke test</div>
-      <div class="ov-sub">+ email notify</div>
+      <div class="ov-ico" style="background:var(--purple-bg);border-color:var(--purple-bd)"><i class="ti ti-smoke" style="color:var(--purple);font-size:22px"></i></div>
+      <div class="ov-lbl">Smoke test</div>
+      <div class="ov-sub">curl :8084 + cleanup</div>
+    </div>
+    <div class="ov-arr"><svg viewBox="0 0 60 14" fill="none"><line x1="0" y1="7" x2="50" y2="7" stroke="#444c56" stroke-width="1.5"/><path d="M46 3L54 7L46 11" stroke="#444c56" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div>
+
+    <div class="ov-node">
+      <div class="ov-ico" style="background:var(--gray-bg);border-color:var(--gray-bd)"><i class="ti ti-mail" style="color:var(--text2);font-size:22px"></i></div>
+      <div class="ov-lbl">Email notify</div>
+      <div class="ov-sub">main/prod ✅ · all ❌</div>
     </div>
 
   </div>
 </div>
 
 <!-- ── Section 2: Jenkins internals ── -->
-<div class="section-title"><h2>Jenkins pipeline — stage detail</h2></div>
-<div class="pipeline">
+<div class="sec"><h2>Jenkins pipeline — stage detail</h2></div>
+<div class="main">
 
-  <!-- Main pipe -->
-  <div class="pipe-main">
+  <div class="pipe">
+
+    <!-- Pipeline options -->
+    <div class="opts-wrap">
+      <div class="opts-tag">pipeline options</div>
+      <div class="opts-row">
+        <span class="opts-pill">quietPeriod(30)</span>
+        <span class="opts-pill">timestamps()</span>
+        <span class="opts-pill">buildDiscarder</span>
+        <span class="opts-pill">agent any</span>
+      </div>
+    </div>
+    <div class="arr"></div>
 
     <!-- Trigger -->
-    <div class="pipe-node n-gray">
-      <span class="ico"><i class="ti ti-brand-github" style="color:#e6edf3"></i></span>
+    <div class="node n-gray">
+      <span class="ico"><i class="ti ti-brand-github" style="color:var(--text)"></i></span>
       <div><div class="lbl">GitHub push</div><div class="sub">Webhook triggers CI build</div></div>
+      <span class="stage-num">trigger</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 1 -->
-    <div class="pipe-node n-gray">
+    <!-- S1 -->
+    <div class="node n-gray">
       <span class="ico"><i class="ti ti-git-pull-request" style="color:var(--text2)"></i></span>
-      <div><div class="lbl">Pull source code</div><div class="sub">Clone from GitHub</div></div>
+      <div><div class="lbl">Pull source code</div><div class="sub">Shallow clone depth:10 · clean workspace</div></div>
+      <span class="stage-num">01</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 2 -->
-    <div class="pipe-node n-coral">
+    <!-- S2 -->
+    <div class="node n-coral">
       <span class="ico"><i class="ti ti-lock-search" style="color:var(--coral)"></i></span>
-      <div><div class="lbl">Secrets scan</div><div class="sub">Gitleaks — detect leaked credentials</div></div>
+      <div><div class="lbl">Secrets scan</div><div class="sub">Gitleaks → SARIF report · fail if FAIL_ON_LEAKS</div></div>
+      <span class="stage-num">02</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 3 -->
-    <div class="pipe-node n-amber">
+    <!-- S3 -->
+    <div class="node n-amber">
       <span class="ico"><i class="ti ti-package" style="color:var(--amber)"></i></span>
-      <div><div class="lbl">Build Maven project</div><div class="sub">Compile, test, package</div></div>
+      <div><div class="lbl">Build Maven project</div><div class="sub">mvn clean package -DskipTests · archive .jar</div></div>
+      <span class="stage-num">03</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 4 -->
-    <div class="pipe-node n-green">
+    <!-- S4 -->
+    <div class="node n-green">
       <span class="ico"><i class="ti ti-archive" style="color:var(--green)"></i></span>
-      <div><div class="lbl">Deploy to Nexus</div><div class="sub">Publish Maven artifacts</div></div>
+      <div><div class="lbl">Deploy to Nexus</div><div class="sub">mvn deploy · global Maven settings</div></div>
+      <span class="stage-num">04</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 5 -->
-    <div class="pipe-node n-teal">
+    <!-- S5 -->
+    <div class="node n-teal">
       <span class="ico"><i class="ti ti-chart-dots" style="color:var(--teal)"></i></span>
-      <div><div class="lbl">SonarCloud analysis</div><div class="sub">Code quality &amp; coverage gates</div></div>
+      <div><div class="lbl">SonarCloud analysis</div><div class="sub">mvn sonar:sonar · quality gate timeout 10 min</div></div>
+      <span class="stage-num">05</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 6: Parallel Docker -->
-    <div class="parallel-container">
-      <div class="parallel-tag">⟨ parallel ⟩ — Docker operations</div>
-      <div class="parallel-row">
-        <div class="pipe-node n-blue" style="max-width:100%">
+    <!-- S6: Parallel Docker -->
+    <div class="par-wrap">
+      <div class="par-tag">⟨ parallel · failFast: true ⟩ — Docker operations</div>
+      <div class="par-row">
+        <div class="node n-blue" style="max-width:100%">
           <span class="ico"><i class="ti ti-file-check" style="color:var(--blue)"></i></span>
-          <div><div class="lbl">Check Dockerfile</div><div class="sub">Lint &amp; validate</div></div>
+          <div><div class="lbl">Check Dockerfile</div><div class="sub">fileExists check · error if missing</div></div>
         </div>
-        <div class="pipe-node n-blue" style="max-width:100%">
+        <div class="node n-blue" style="max-width:100%">
           <span class="ico"><i class="ti ti-brand-docker" style="color:var(--blue)"></i></span>
-          <div><div class="lbl">Build Docker image</div><div class="sub">docker build</div></div>
+          <div><div class="lbl">Build Docker image</div><div class="sub">docker build --no-cache --pull</div></div>
         </div>
       </div>
+      <div style="text-align:right;font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:6px">06</div>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 7 -->
-    <div class="pipe-node n-coral">
+    <!-- S7 -->
+    <div class="node n-coral">
       <span class="ico"><i class="ti ti-shield-search" style="color:var(--coral)"></i></span>
-      <div><div class="lbl">Trivy scan</div><div class="sub">Image vulnerability &amp; CVE scan</div></div>
+      <div><div class="lbl">Trivy scan</div><div class="sub">retry(3) DB pull · HTML report · sets TRIVY_SCAN_STATUS</div></div>
+      <span class="stage-num">07</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 8 -->
-    <div class="pipe-node n-amber">
+    <!-- S8 -->
+    <div class="node n-amber">
       <span class="ico"><i class="ti ti-cloud-upload" style="color:var(--amber)"></i></span>
-      <div><div class="lbl">Upload Trivy report → S3</div><div class="sub">AWS S3 artifact store</div></div>
+      <div><div class="lbl">Upload Trivy report → S3</div><div class="sub">aws s3 cp · skips if report empty</div></div>
+      <span class="stage-num">08</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Decision diamond -->
-    <div class="diamond-wrap">
-      <div class="diamond-shape">
-        <div class="diamond-inner">Trivy<br>passed?</div>
-      </div>
+    <!-- Decision -->
+    <div class="dia-wrap">
+      <div class="diamond"><div class="diamond-inner">TRIVY_<br>SCAN_<br>STATUS == 0?</div></div>
       <div class="gate-row">
         <div class="gate-no">
-          <div class="gate-line-v" style="height:16px"></div>
-          <div class="gate-tag gate-tag-no">✕ no</div>
-          <div class="pipe-node n-red" style="max-width:160px">
+          <div class="gate-vl" style="height:14px"></div>
+          <div class="gate-tag gt-no">✕ vuln found</div>
+          <div class="node n-red" style="max-width:170px">
             <span class="ico"><i class="ti ti-ban" style="color:var(--red)"></i></span>
-            <div><div class="lbl">Skip push</div><div class="sub">Gate blocked</div></div>
+            <div><div class="lbl">Skip push</div><div class="sub">Image not published</div></div>
           </div>
         </div>
         <div class="gate-yes">
-          <div class="gate-line-v" style="height:16px"></div>
-          <div class="gate-tag gate-tag-yes">✓ yes</div>
-          <div class="gate-line-v" style="height:16px"></div>
+          <div class="gate-vl" style="height:14px"></div>
+          <div class="gate-tag gt-yes">✓ clean</div>
+          <div class="gate-vl" style="height:14px"></div>
         </div>
       </div>
     </div>
 
-    <!-- Stage 9 -->
-    <div class="pipe-node n-blue">
+    <!-- S9 -->
+    <div class="node n-blue">
       <span class="ico"><i class="ti ti-brand-docker" style="color:var(--blue)"></i></span>
-      <div><div class="lbl">Push Docker image</div><div class="sub">→ Docker Hub registry</div></div>
+      <div><div class="lbl">Push Docker image</div><div class="sub">retry(3) · Docker Hub · archives deploy-info.txt</div></div>
+      <span class="stage-num">09</span>
     </div>
-    <div class="pipe-arrow"></div>
+    <div class="arr"></div>
 
-    <!-- Stage 10 -->
-    <div class="pipe-node n-purple">
+    <!-- S10 -->
+    <div class="node n-purple">
       <span class="ico"><i class="ti ti-smoke" style="color:var(--purple)"></i></span>
-      <div><div class="lbl">Smoke test</div><div class="sub">Verify deployment health</div></div>
+      <div><div class="lbl">Smoke test</div><div class="sub">docker run -p 8084 · sleep 30 · test-run.sh</div></div>
+      <span class="stage-num">10</span>
+    </div>
+    <div class="arr"></div>
+
+    <!-- S11 -->
+    <div class="node n-gray">
+      <span class="ico"><i class="ti ti-trash" style="color:var(--text2)"></i></span>
+      <div><div class="lbl">Cleanup</div><div class="sub">docker stop · rm container · rmi image</div></div>
+      <span class="stage-num">11</span>
     </div>
 
-    <div class="post-divider"><span>post build</span></div>
+    <div class="post-div"><span>post build</span></div>
 
-    <!-- Post -->
-    <div class="pipe-node n-gray">
-      <span class="ico"><i class="ti ti-mail" style="color:var(--text2)"></i></span>
-      <div><div class="lbl">Email notification</div><div class="sub">Always — pass or fail</div></div>
+    <!-- Post: success -->
+    <div class="node n-green" style="max-width:400px">
+      <span class="ico"><i class="ti ti-mail" style="color:var(--green)"></i></span>
+      <div><div class="lbl">Email — success</div><div class="sub">main branch or prod env only · attaches Trivy report</div></div>
+    </div>
+    <div class="arr"></div>
+
+    <!-- Post: failure -->
+    <div class="node n-red" style="max-width:400px">
+      <span class="ico"><i class="ti ti-mail" style="color:var(--red)"></i></span>
+      <div><div class="lbl">Email — failure</div><div class="sub">All environments · includes failed stage + console link</div></div>
+    </div>
+    <div class="arr"></div>
+
+    <!-- Post: always -->
+    <div class="node n-gray" style="max-width:400px">
+      <span class="ico"><i class="ti ti-refresh" style="color:var(--text2)"></i></span>
+      <div><div class="lbl">cleanWs()</div><div class="sub">Always — deleteDirs · notFailBuild</div></div>
     </div>
 
   </div>
 
-  <!-- Sidebar -->
+  <!-- ── Sidebar ── -->
   <div class="sidebar">
-    <div class="sidebar-section">
-      <h4>Legend</h4>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--gray-bg);border-color:var(--gray-border)"></div>Source / notify</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--amber-bg);border-color:var(--amber-border)"></div>Build / upload</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--coral-bg);border-color:var(--coral-border)"></div>Security scan</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--teal-bg);border-color:var(--teal-border)"></div>Code quality</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--green-bg);border-color:var(--green-border)"></div>Artifact storage</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--blue-bg);border-color:var(--blue-border)"></div>Docker ops</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--purple-bg);border-color:var(--purple-border)"></div>Testing</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--red-bg);border-color:var(--red-border)"></div>Gate: blocked</div>
+
+    <div class="sb-card">
+      <h3>Legend</h3>
+      <div class="leg"><div class="leg-dot" style="background:var(--gray-bg);border-color:var(--gray-bd)"></div>Source / notify / cleanup</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--amber-bg);border-color:var(--amber-bd)"></div>Build / upload</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--coral-bg);border-color:var(--coral-bd)"></div>Security scan</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--teal-bg);border-color:var(--teal-bd)"></div>Code quality</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--green-bg);border-color:var(--green-bd)"></div>Artifact storage</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--blue-bg);border-color:var(--blue-bd)"></div>Docker ops</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--purple-bg);border-color:var(--purple-bd)"></div>Testing</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--red-bg);border-color:var(--red-bd)"></div>Gate blocked</div>
     </div>
 
-    <div class="sidebar-section">
-      <h4>Tools used</h4>
-      <div class="tool-chip"><i class="ti ti-brand-github" style="color:var(--text)"></i> GitHub + Webhook</div>
-      <div class="tool-chip"><i class="ti ti-settings" style="color:var(--amber)"></i> Jenkins</div>
-      <div class="tool-chip"><i class="ti ti-lock-search" style="color:var(--coral)"></i> Gitleaks</div>
-      <div class="tool-chip"><i class="ti ti-package" style="color:var(--amber)"></i> Maven</div>
-      <div class="tool-chip"><i class="ti ti-archive" style="color:var(--green)"></i> Nexus Repository</div>
-      <div class="tool-chip"><i class="ti ti-chart-dots" style="color:var(--teal)"></i> SonarCloud</div>
-      <div class="tool-chip"><i class="ti ti-brand-docker" style="color:var(--blue)"></i> Docker</div>
-      <div class="tool-chip"><i class="ti ti-shield-search" style="color:var(--coral)"></i> Trivy</div>
-      <div class="tool-chip"><i class="ti ti-cloud" style="color:var(--amber)"></i> AWS S3</div>
-      <div class="tool-chip"><i class="ti ti-smoke" style="color:var(--purple)"></i> Smoke test</div>
-      <div class="tool-chip"><i class="ti ti-mail" style="color:var(--text2)"></i> Email notify</div>
+    <div class="sb-card">
+      <h3>Tools</h3>
+      <div class="tool"><i class="ti ti-brand-github" style="color:var(--text)"></i> GitHub + Webhook</div>
+      <div class="tool"><i class="ti ti-settings" style="color:var(--amber)"></i> Jenkins</div>
+      <div class="tool"><i class="ti ti-lock-search" style="color:var(--coral)"></i> Gitleaks</div>
+      <div class="tool"><i class="ti ti-package" style="color:var(--amber)"></i> Maven 3.9.11</div>
+      <div class="tool"><i class="ti ti-archive" style="color:var(--green)"></i> Nexus Repository</div>
+      <div class="tool"><i class="ti ti-chart-dots" style="color:var(--teal)"></i> SonarCloud</div>
+      <div class="tool"><i class="ti ti-brand-docker" style="color:var(--blue)"></i> Docker</div>
+      <div class="tool"><i class="ti ti-shield-search" style="color:var(--coral)"></i> Trivy</div>
+      <div class="tool"><i class="ti ti-cloud" style="color:var(--amber)"></i> AWS S3</div>
+      <div class="tool"><i class="ti ti-smoke" style="color:var(--purple)"></i> Smoke test (test-run.sh)</div>
+      <div class="tool"><i class="ti ti-mail" style="color:var(--text2)"></i> Email Extension</div>
     </div>
 
-    <div class="sidebar-section">
-      <h4>Parallel stage</h4>
-      <p style="font-size:11px;color:var(--text2);line-height:1.6">
-        <i class="ti ti-file-check" style="color:var(--blue)"></i> Dockerfile check and
-        <i class="ti ti-brand-docker" style="color:var(--blue)"></i> Docker build run simultaneously to reduce pipeline time.
+    <div class="sb-card">
+      <h3>Key parameters</h3>
+      <div class="param-row"><span class="param-key">BRANCH_NAME</span><span class="param-val">main|dev|staging</span></div>
+      <div class="param-row"><span class="param-key">ENVIRONMENT</span><span class="param-val">dev|staging|prod</span></div>
+      <div class="param-row"><span class="param-key">TRIVY_SEVERITY</span><span class="param-val">HIGH|CRITICAL</span></div>
+      <div class="param-row"><span class="param-key">FAIL_ON_LEAKS</span><span class="param-val">true</span></div>
+      <div class="param-row"><span class="param-key">CONTAINER_PORT</span><span class="param-val">8084</span></div>
+      <div class="param-row"><span class="param-key">PROJECT_VERSION</span><span class="param-val">1.0|1.1|1.2</span></div>
+    </div>
+
+    <div class="sb-card">
+      <h3>Trivy gate</h3>
+      <p class="note">
+        <i class="ti ti-shield-search" style="color:var(--coral)"></i> Scan runs on every build.<br><br>
+        <i class="ti ti-cloud-upload" style="color:var(--amber)"></i> Report always uploaded to S3.<br><br>
+        <i class="ti ti-brand-docker" style="color:var(--blue)"></i> Docker Hub push only proceeds when <code style="font-size:10px;color:var(--amber)">TRIVY_SCAN_STATUS == 0</code>.<br><br>
+        <i class="ti ti-smoke" style="color:var(--purple)"></i> Smoke test also gated on same condition.
       </p>
     </div>
 
-    <div class="sidebar-section">
-      <h4>Trivy gate</h4>
-      <p style="font-size:11px;color:var(--text2);line-height:1.6">
-        The image push to Docker Hub only proceeds if Trivy reports no critical vulnerabilities. The scan report is always uploaded to S3 regardless of outcome.
+    <div class="sb-card">
+      <h3>Email rules</h3>
+      <p class="note">
+        <span style="color:var(--green)">✅ Success</span> — sent only on <code style="font-size:10px;color:var(--amber)">main</code> branch or <code style="font-size:10px;color:var(--amber)">prod</code> environment.<br><br>
+        <span style="color:var(--red)">❌ Failure</span> — sent on all environments, always.<br><br>
+        Both include links to Trivy report, SonarCloud, and console output.
       </p>
     </div>
+
   </div>
-
 </div>
 
-<!-- ── Footer ── -->
 <div class="footer">
-  <p>CI/CD Pipeline Architecture</p>
-  <p>GitHub → Jenkins → Docker Hub · Nexus · AWS S3</p>
+  <p>🦏 Rhino Horn — DevSecOps Pipeline</p>
+  <p>github.com/Orion83-h/Safari</p>
 </div>
 
 </body>
